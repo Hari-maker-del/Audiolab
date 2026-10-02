@@ -50,27 +50,54 @@ def generate(text, language, ref_audio, ref_text):
         raise gr.Error(str(e))
 
 
-with gr.Blocks(title="AudioLab — IndicF5 Voice Studio") as demo:
-    gr.Markdown("# 🇮🇳 AudioLab — IndicF5 Voice Studio")
-    gr.Markdown("High-quality local Indian-language voice cloning. Use only a voice you own or have permission to clone.")
+with gr.Blocks(title="VoiceCloner IndicF5 V5") as demo:
+    gr.Markdown("# 🇮🇳 VoiceCloner IndicF5 V5")
+    gr.Markdown(
+        "High-quality local voice cloning for Indian languages. "
+        "Use only a voice you own or have permission to clone."
+    )
 
     with gr.Row():
         with gr.Column():
-            ref_audio = gr.Audio(label="Reference Voice", type="filepath", sources=["upload", "microphone"])
+            ref_audio = gr.Audio(
+                label="Reference Voice",
+                type="filepath",
+                sources=["upload", "microphone"],
+            )
             inspect_btn = gr.Button("🔎 Analyze Voice")
             analysis = gr.Textbox(label="Reference Quality", lines=5)
             inspect_btn.click(inspect_reference, ref_audio, analysis)
-            ref_text = gr.Textbox(label="Exact Reference Transcript", lines=5)
+            ref_text = gr.Textbox(
+                label="Exact Reference Transcript",
+                lines=5,
+                placeholder="Type exactly what is spoken in the reference recording.",
+            )
 
         with gr.Column():
-            language = gr.Dropdown(list(LANGS.keys()), value="Tamil", label="Target Language")
-            text = gr.Textbox(label="Text to Speak", lines=10, placeholder="தமிழில் பேச வேண்டிய உரையை இங்கே எழுதுங்கள்...")
+            language = gr.Dropdown(
+                list(LANGS.keys()),
+                value="Tamil",
+                label="Target Language",
+            )
+            text = gr.Textbox(
+                label="Text to Speak",
+                lines=10,
+                placeholder="தமிழில் பேச வேண்டிய உரையை இங்கே எழுதுங்கள்...",
+            )
             generate_btn = gr.Button("🚀 Clone Voice", variant="primary")
             result = gr.Audio(label="Cloned Voice", type="filepath")
 
-    generate_btn.click(generate, inputs=[text, language, ref_audio, ref_text], outputs=result)
+    generate_btn.click(
+        generate,
+        inputs=[text, language, ref_audio, ref_text],
+        outputs=result,
+    )
 
-    gr.Markdown("Accurate reference transcription and clean single-speaker audio improve cloning consistency.")
+    gr.Markdown(
+        "### Accuracy tips\n"
+        "Use a clean single-speaker reference and an exact transcript. "
+        "Keep background music, reverb and overlapping speakers out of the reference."
+    )
 
 if __name__ == "__main__":
     demo.launch(server_name="127.0.0.1", server_port=7860)
