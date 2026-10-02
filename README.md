@@ -1,19 +1,29 @@
-# AudioLab — IndicF5 Voice Studio
+# 🎙️ AudioLab — IndicF5 Voice Cloning
 
-Local high-quality Indian-language voice cloning studio.
+Tamil-first, Indian-language voice cloning studio using AI4Bharat IndicF5.
 
-This repository contains the V5 application built around AI4Bharat IndicF5 for reference-guided speech generation. IndicF5 documents support for 11 Indian languages including Tamil, Telugu, Malayalam, Hindi, Kannada, Bengali, Gujarati, Marathi, Odia, Punjabi and Assamese.
+## V5 pipeline
+
+Reference audio → quality analysis → cleanup → exact transcript → IndicF5 → WAV output
+
+### Supported Indian languages
+
+Tamil, Telugu, Malayalam, Hindi, Kannada, Bengali, Gujarati, Marathi, Odia, Punjabi and Assamese.
 
 ## Features
-- Reference voice upload/recording
-- Reference quality analysis
-- Exact reference transcript conditioning
-- Tamil-first UI
-- Indian-language selection
-- Local WAV generation
-- Modular engine architecture
 
-## Run on Windows
+- Reference voice upload / microphone recording
+- Reference quality analysis
+- Automatic reference cleanup
+- Exact reference transcript conditioning
+- Text-to-speech voice cloning
+- Tamil-first interface
+- Modular engine architecture
+- Local inference
+
+## Setup
+
+Recommended Python: 3.10.
 
 ```powershell
 .\scripts\setup_windows.ps1
@@ -21,8 +31,16 @@ huggingface-cli login
 .\scripts\run.ps1
 ```
 
-Open `http://127.0.0.1:7860`.
+Then open `http://127.0.0.1:7860`.
 
-Official IndicF5 project: https://github.com/AI4Bharat/IndicF5
+The IndicF5 weights are downloaded from the official Hugging Face model when first loaded.
 
-Use only voices you own or have explicit permission to clone.
+Official project: https://github.com/AI4Bharat/IndicF5
+
+## Privacy
+
+Reference recordings are not committed to this repository. Keep personal voice samples local.
+
+## Responsible use
+
+Use only voices you own or have explicit permission to clone. Do not use the project for impersonation, fraud, or misleading identity claims.
