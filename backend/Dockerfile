@@ -1,13 +1,15 @@
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/models/huggingface
 
-RUN apt-get update && apt-get install -y python3 python3-pip ffmpeg git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg git && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY requirements.txt .
-RUN python3 -m pip install --upgrade pip && python3 -m pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
+
 EXPOSE 8000
-CMD ["python3", "server.py"]
+CMD ["python", "server.py"]
