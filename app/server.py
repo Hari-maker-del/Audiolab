@@ -74,8 +74,8 @@ with gr.Blocks(title="Audiolab Legacy Studio") as demo:
             result = gr.Audio(label="Cloned Voice", type="filepath")
     generate_btn.click(generate, inputs=[text, language, ref_audio, ref_text], outputs=result)
 
-api = FastAPI(title="Audiolab API", version="5.1.0")
-api.add_middleware(
+app = FastAPI(title="Audiolab API", version="5.1.1")
+app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
@@ -84,12 +84,12 @@ api.add_middleware(
 )
 
 
-@api.get("/api/health")
+@app.get("/api/health")
 def health():
     return {"status": "ok", "model": "IndicF5", "languages": list(LANGS.keys())}
 
 
-@api.post("/api/analyze")
+@app.post("/api/analyze")
 async def api_analyze(file: UploadFile = File(...)):
     suffix = Path(file.filename or "reference.wav").suffix or ".wav"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -101,7 +101,7 @@ async def api_analyze(file: UploadFile = File(...)):
         temp_path.unlink(missing_ok=True)
 
 
-@api.post("/api/generate")
+@app.post("/api/generate")
 async def api_generate(
     text: str = Form(...),
     language: str = Form("Tamil"),
@@ -131,11 +131,11 @@ async def api_generate(
 
 
 # Keep the original Gradio studio available under /legacy.
-api = gr.mount_gradio_app(api, demo, path="/legacy")
+app = gr.mount_gradio_app(app, demo, path="/legacy")
 
 # Serve the Stitch frontend after API and legacy routes so they remain reachable.
 if FRONTEND.exists():
-    api.mount("/", StaticFiles(directory=str(FRONTEND), html=True), name="frontend")
+    app.mount("/", StaticFiles(directory=str(FRONTEND), html=True), name="frontend")
 
 if __name__ == "__main__":
-    uvicorn.run(api, host="127.0.0.1", port=7860)
+    uvicorn.run(app, host="127.0.0.1", port=7860)
