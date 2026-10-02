@@ -27,15 +27,15 @@
       </div>
       <div class="side-status">
         <div><span class="dot"></span><span id="modelStatus">IndicF5 Ready</span></div>
-        <div><span class="dot muted"></span><span id="deviceStatus">Device checking…</span></div>
-        <small>Audiolab V5.1</small>
+        <div><span class="dot muted"></span><span id="deviceStatus">ZeroGPU checking…</span></div>
+        <small>Audiolab V6 · ZeroGPU</small>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div class="mobile-brand"><span class="brand-mark">≈</span> Audiolab</div>
-        <div class="top-actions"><span class="privacy-pill">Local-first</span><button class="icon-btn" id="menuBtn">☰</button></div>
+        <div class="top-actions"><span class="privacy-pill">Authorized voice use</span><button class="icon-btn" id="menuBtn">☰</button></div>
       </header>
 
       <section id="page-studio" class="page active"></section>
@@ -49,6 +49,8 @@
   </div>
 
   <div id="toast" class="toast"></div>
+  <script type="module" src="/hf-client.js"></script>
   <script src="/app.js"></script>
+  <script src="/hf-integration.js"></script>
 </body>
 </html>
