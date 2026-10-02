@@ -1,0 +1,9 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+reference/*
+outputs/*
+*.wav
+*.mp3
+*.flac
