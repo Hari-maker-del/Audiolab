@@ -36,5 +36,5 @@ class IndicF5Engine:
         )
         if audio.dtype == np.int16:
             audio = audio.astype(np.float32) / 32768.0
-        sf.write(output, np.asarray(audio, dtype=np.float32), samplerate=24000)
+        sf.write(str(output), np.asarray(audio, dtype=np.float32), samplerate=24000)
         return str(output)
