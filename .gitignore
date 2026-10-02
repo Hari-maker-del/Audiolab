@@ -1,0 +1,18 @@
+# Local Python environment
+backend/.venv/
+backend/.env
+backend/__pycache__/
+backend/reference/*
+backend/outputs/*
+*.pyc
+
+# Local generated audio
+*.wav
+*.mp3
+*.flac
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
