@@ -1,6 +1,5 @@
-from pathlib import Path
-import numpy as np
 import librosa
+import numpy as np
 import soundfile as sf
 
 
@@ -36,4 +35,4 @@ def clean(src, dst):
     if peak:
         y = y / peak * 0.95
     sf.write(dst, y, sr)
-    return dst
+    return str(dst)
