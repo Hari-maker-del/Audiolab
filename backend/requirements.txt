@@ -1,10 +1,14 @@
-numpy<2
+# Audiolab GPU backend
+# Python 3.10 / CUDA image provides the PyTorch runtime.
+git+https://github.com/AI4Bharat/IndicF5.git
+transformers==4.46.3
+accelerate==0.34.2
+vocos==0.1.0
+x-transformers==2.19.7
+numpy==1.26.4
+librosa==0.11.0
 soundfile
-librosa
 scipy
-torch
-torchaudio
-transformers==4.49.0
 huggingface_hub
 fastapi
 uvicorn[standard]
