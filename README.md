@@ -4,7 +4,7 @@
 
 Audiolab is a Tamil-first, Indian-language voice generation studio built around AI4Bharat IndicF5, with a warm **Turmeric × Malt** interface inspired by the Stitch design.
 
-## What is now included
+## What is included
 
 - Production-style responsive frontend in `frontend/`
 - Turmeric × Malt design system
@@ -20,48 +20,81 @@ Audiolab is a Tamil-first, Indian-language voice generation studio built around 
 - FastAPI endpoints for frontend integration
 - Original Gradio studio retained at `/legacy`
 - Local IndicF5 inference
+- CUDA PyTorch setup for supported NVIDIA GPUs
+- One-click Windows local launcher
 
 ## Architecture
 
 ```text
 Stitch-inspired frontend
         ↓
-FastAPI
+FastAPI (127.0.0.1:8000)
         ↓
 Reference cleanup + quality analysis
         ↓
 AI4Bharat IndicF5
         ↓
+Vocos
+        ↓
 WAV output
 ```
 
-## Run locally
+## Run locally on Windows
 
-Recommended Python: 3.10.
+Python 3.11.x is recommended.
+
+### One-click start
+
+Double-click:
+
+`START-AUDIOLAB.bat`
+
+Or run:
 
 ```powershell
-.\scripts\setup_windows.ps1
-huggingface-cli login
-.\scripts\run.ps1
+.\START-AUDIOLAB.bat
 ```
 
-Then open:
+The launcher starts:
 
-`http://127.0.0.1:7860`
+- UI: `http://127.0.0.1:5500`
+- API: `http://127.0.0.1:8000/health`
 
-API health:
+### Manual setup
 
-`http://127.0.0.1:7860/api/health`
+```powershell
+.\backend\.venv\Scripts\Activate.ps1
+python -m pip install -r backend\requirements.txt
+python backend\server.py
+```
 
-Legacy Gradio studio:
+In another PowerShell window:
 
-`http://127.0.0.1:7860/legacy`
+```powershell
+python -m http.server 5500 --directory frontend
+```
+
+Then open `http://127.0.0.1:5500`.
+
+## Hugging Face authentication
+
+IndicF5 requires Hugging Face access. Log in before the first model load:
+
+```powershell
+python -m huggingface_hub.commands.huggingface_cli login
+```
+
+Keep your token private and never commit it to GitHub.
 
 ## API
 
+### Health
+
+`GET /health`
+
 ### Analyze a reference
 
-`POST /api/analyze`
+`POST /analyze`
 
 Multipart field:
 
@@ -69,7 +102,7 @@ Multipart field:
 
 ### Generate speech
 
-`POST /api/generate`
+`POST /generate`
 
 Multipart fields:
 
@@ -79,6 +112,8 @@ Multipart fields:
 - `file`
 
 The endpoint returns a WAV file when generation succeeds.
+
+The browser frontend uses `/api/*` paths locally and automatically bridges them to the FastAPI service on port `8000`.
 
 ## Indian languages
 
