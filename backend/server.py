@@ -9,14 +9,21 @@ from fastapi.responses import FileResponse
 from audio import analyze, clean
 from engine import IndicF5Engine, LANGS
 
-app = FastAPI(title="Audiolab GPU Voice API", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="Audiolab GPU Voice API", version="1.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 BASE = Path(__file__).resolve().parent
 REF = BASE / "reference"
 OUT = BASE / "outputs"
 REF.mkdir(exist_ok=True)
 OUT.mkdir(exist_ok=True)
+
 engine = None
 
 
@@ -29,7 +36,12 @@ def get_engine():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": "IndicF5", "languages": list(LANGS.keys())}
+    return {
+        "status": "ok",
+        "model": "IndicF5",
+        "device": get_engine().device if engine is not None else "not_loaded",
+        "languages": list(LANGS.keys()),
+    }
 
 
 @app.post("/analyze")
@@ -38,6 +50,7 @@ async def analyze_endpoint(file: UploadFile = File(...)):
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         shutil.copyfileobj(file.file, tmp)
         path = Path(tmp.name)
+
     try:
         return analyze(str(path))
     finally:
@@ -65,9 +78,24 @@ async def generate_endpoint(
 
     cleaned = REF / "request_reference.wav"
     output = OUT / "audiolab_generated.wav"
+
     try:
         clean(str(source), cleaned)
         result = get_engine().generate(text, cleaned, ref_text, output)
-        return FileResponse(result, media_type="audio/wav", filename="audiolab_generated.wav")
+        return FileResponse(
+            result,
+            media_type="audio/wav",
+            filename="audiolab_generated.wav",
+        )
     finally:
         source.unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=8000,
+    )
