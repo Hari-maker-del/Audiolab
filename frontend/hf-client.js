@@ -1,4 +1,4 @@
-import { Client, handle_file } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+import { Client, handle_file } from "https://cdn.jsdelivr.net/npm/@gradio/client@2.5.1/dist/index.min.js";
 
 const SPACE = "ai4bharat/IndicF5";
 const LOCAL_API = "http://127.0.0.1:8000";
@@ -87,7 +87,7 @@ window.audiolabHF = IS_LOCAL ? {
   generate: localGenerate,
 } : {
   async health() {
-    const client = await timeout(getHFClient(), 12000, "IndicF5 is taking too long to connect. Try Generate again.");
+    const client = await timeout(getHFClient(), 20000, "IndicF5 is taking too long to connect. Try Generate again.");
     return client.view_api();
   },
   async analyze(file) {
@@ -95,7 +95,17 @@ window.audiolabHF = IS_LOCAL ? {
   },
   async generate({ text, refText, file }) {
     const client = await timeout(getHFClient(), 30000, "IndicF5 connection timed out. Please try again.");
-    return client.predict(text, handle_file(file), refText, { api_name: "/synthesize_speech" });
+
+    // @gradio/client 2.x expects the endpoint first, followed by the payload.
+    // IndicF5 exposes /synthesize_speech with three inputs:
+    // text to synthesize, reference audio, and the reference transcript.
+    const result = await client.predict("/synthesize_speech", [
+      text,
+      handle_file(file),
+      refText,
+    ]);
+
+    return result;
   },
 };
 
