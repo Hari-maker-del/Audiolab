@@ -16,7 +16,6 @@ if (-not (Test-Path $python)) {
     & $python -m pip install -r (Join-Path $backend 'requirements.txt')
 }
 
-# Only install dependencies on first setup. This keeps normal startup fast.
 $marker = Join-Path $backend '.audiolab_setup_complete'
 if (-not (Test-Path $marker)) {
     Write-Host 'First-time setup: installing backend dependencies...' -ForegroundColor Yellow
@@ -33,7 +32,6 @@ if (Test-Path $envFile) {
     }
 }
 
-# Avoid duplicate servers if Audiolab is already running.
 $api = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
 $web = Get-NetTCPConnection -LocalPort 5500 -State Listen -ErrorAction SilentlyContinue
 
@@ -42,7 +40,7 @@ if (-not $api) {
 }
 
 if (-not $web) {
-    Start-Process -FilePath $python -ArgumentList '-m','http.server','5500' -WorkingDirectory $frontend -WindowStyle Minimized
+    Start-Process -FilePath $python -ArgumentList '-m','http.server','5500','--bind','127.0.0.1' -WorkingDirectory $frontend -WindowStyle Minimized
 }
 
 Start-Sleep -Seconds 2
