@@ -1,0 +1,20 @@
+# Audiolab local AI backend — never send to Vercel
+backend/
+app/
+hf-space/
+scripts/
+requirements.txt
+START-AUDIOLAB.bat
+LOCAL_FREE_SETUP.md
+README.md
+
+# Local Python/model artifacts
+.venv/
+__pycache__/
+*.pyc
+.env
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
