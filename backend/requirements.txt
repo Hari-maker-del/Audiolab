@@ -1,9 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu124
 numpy==1.26.4
 soundfile==0.12.1
 scipy==1.13.0
 librosa==0.10.2.post1
-torch==2.2.0
-torchaudio==2.2.0
+torch==2.6.0+cu124
+torchaudio==2.6.0+cu124
 transformers==4.49.0
 accelerate==0.33.0
 pydub==0.25.1
