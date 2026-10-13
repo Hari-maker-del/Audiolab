@@ -145,6 +145,16 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(t.file); a.download = t.name; a.click();
   }
 
+  // Accept a real converted File from the Voice Convert workflow.
+  window.addEventListener('audiolab:open-in-editor', (event) => {
+    const file = event.detail && event.detail.file;
+    if (!(file instanceof File)) return;
+    if (!document.getElementById('page-tools')?.classList.contains('active')) {
+      if (typeof window.nav === 'function') window.nav('tools');
+    }
+    addFile(file);
+  });
+
   const observer = new MutationObserver(mount);
   observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   document.addEventListener('DOMContentLoaded', mount);
