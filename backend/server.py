@@ -17,6 +17,11 @@ from audio_tools import (
     eq_audio, compress_audio, noise_reduce_audio, reverb_audio, audio_quality,
 )
 from engine import IndicF5Engine, LANGS
+from voice_conversion import (
+    VoiceConversionUnavailable,
+    convert_voice,
+    get_voice_conversion_status,
+)
 
 app = FastAPI(title="Audiolab AI Audio Studio API", version="2.2.0")
 
@@ -105,7 +110,27 @@ def health():
         "model": "IndicF5",
         "device": get_engine().device if engine is not None else "not_loaded",
         "languages": list(LANGS.keys()),
-        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation"],
+        "voice_conversion": get_voice_conversion_status(),
+        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion"],
+    }
+
+
+@app.get("/models")
+def models_endpoint():
+    """Report real local model state without triggering heavy lazy loading."""
+    return {
+        "models": [
+            {
+                "id": "indicf5",
+                "name": "AI4Bharat IndicF5",
+                "task": "text-to-speech",
+                "state": "loaded" if engine is not None else "not_loaded",
+                "available": engine is not None,
+                "device": engine.device if engine is not None else "not_loaded",
+                "note": "IndicF5 loads on the first generation request; model access and dependencies may be required.",
+            },
+            get_voice_conversion_status(),
+        ]
     }
 
 
@@ -237,6 +262,47 @@ def mix_endpoint(files: list[UploadFile] = File(...), volumes: str = Form("")):
         for path in paths:
             path.unlink(missing_ok=True)
         if not output.exists():
+            output.unlink(missing_ok=True)
+
+
+@app.post("/voice-convert")
+def voice_convert_endpoint(
+    source_file: UploadFile = File(...),
+    target_file: UploadFile = File(...),
+    consent: bool = Form(...),
+):
+    """Convert an existing source performance toward a target reference voice."""
+    if not consent:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm that you own the source recording and have permission to use the target voice.",
+        )
+
+    source = None
+    target = None
+    output = make_output("voice-converted")
+    response_ready = False
+    try:
+        source = save_upload(source_file)
+        target = save_upload(target_file)
+        try:
+            result_path = convert_voice(str(source), str(target), str(output))
+        except VoiceConversionUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Voice conversion failed: {exc}") from exc
+
+        response = result_file(Path(result_path))
+        response_ready = True
+        return response
+    finally:
+        if source is not None:
+            source.unlink(missing_ok=True)
+        if target is not None:
+            target.unlink(missing_ok=True)
+        if not response_ready:
             output.unlink(missing_ok=True)
 
 
