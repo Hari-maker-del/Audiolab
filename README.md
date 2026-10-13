@@ -86,6 +86,20 @@ python -m huggingface_hub.commands.huggingface_cli login
 
 Keep your token private and never commit it to GitHub.
 
+## Optional voice-to-voice conversion
+
+Audiolab now includes an optional **OpenVoice V1 ToneColorConverter** integration for converting an existing performance toward a target reference voice. This is separate from IndicF5 text-to-speech. It may change the timing, pitch, pronunciation, and emotional delivery; compare the result with the source recording.
+
+After running `START-AUDIOLAB.bat` once and ensuring `backend\.venv` exists, run this from the repository root in PowerShell:
+
+```powershell
+.\scripts\setup-voice-conversion.ps1
+```
+
+The setup script installs optional conversion dependencies and downloads the OpenVoice V1 checkpoints into `backend/models/openvoice_v1`. The model directory is ignored by Git and must stay out of source control. This download requires internet and disk space. The default setup uses local inference and no paid API; CPU inference may be slow.
+
+Voice Convert is available in the Studio dashboard when the local FastAPI backend is running. Reference audio saved in the Voices library is stored in the current browser's IndexedDB; it is not synced between different browser origins or devices. The Models page reports whether the local conversion package and checkpoint files are present. Voice conversion has **not** been declared verified until a real source/target pair is converted successfully on the user's machine.
+
 ## API
 
 ### Health
@@ -112,6 +126,18 @@ Multipart fields:
 - `file`
 
 The endpoint returns a WAV file when generation succeeds.
+
+### Voice conversion
+
+`POST /voice-convert`
+
+Multipart fields:
+
+- `source_file`: original voice-over audio
+- `target_file`: target reference voice audio
+- `consent`: `true` after confirming permission to use both voices
+
+Returns the converted WAV only when real OpenVoice inference succeeds. `GET /models` reports the actual local model state.
 
 The browser frontend uses `/api/*` paths locally and automatically bridges them to the FastAPI service on port `8000`.
 
