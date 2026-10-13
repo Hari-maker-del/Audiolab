@@ -31,6 +31,30 @@ def _openvoice_installed() -> bool:
         return False
 
 
+_REQUIRED_MODULES = (
+    "openvoice",
+    "wavmark",
+    "eng_to_ipa",
+    "inflect",
+    "unidecode",
+    "pypinyin",
+    "cn2an",
+    "jieba",
+)
+
+
+def _missing_dependencies() -> list[str]:
+    missing: list[str] = []
+    for module_name in _REQUIRED_MODULES:
+        try:
+            present = importlib.util.find_spec(module_name) is not None
+        except (ImportError, ValueError, ModuleNotFoundError):
+            present = False
+        if not present:
+            missing.append(module_name)
+    return missing
+
+
 def _device_status() -> str:
     try:
         import torch
@@ -42,13 +66,14 @@ def _device_status() -> str:
 def get_voice_conversion_status() -> dict:
     files_present = CONFIG_PATH.is_file() and CHECKPOINT_PATH.is_file()
     package_installed = _openvoice_installed()
+    missing_dependencies = _missing_dependencies()
     loaded = _engine is not None
 
     if loaded:
         state = "loaded"
     elif not files_present:
         state = "model_files_missing"
-    elif not package_installed:
+    elif missing_dependencies:
         state = "dependencies_missing"
     else:
         state = "ready_to_load"
@@ -59,10 +84,11 @@ def get_voice_conversion_status() -> dict:
         "task": "voice-to-voice conversion",
         "license": "MIT",
         "state": state,
-        "available": bool(files_present and package_installed),
+        "available": bool(files_present and not missing_dependencies),
         "loaded": loaded,
         "model_files_present": files_present,
         "package_installed": package_installed,
+        "missing_dependencies": missing_dependencies,
         "device": getattr(_engine, "device", _device_status()) if loaded else _device_status(),
         "model_directory": "backend/models/openvoice_v1/checkpoints/converter",
         "setup_command": r".\scripts\setup-voice-conversion.ps1",
