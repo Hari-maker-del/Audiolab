@@ -1,0 +1,33 @@
+name: Audiolab Static Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-syntax:
+    name: Python syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile backend Python files
+        run: python -m compileall -q backend
+
+  frontend-syntax:
+    name: Frontend JavaScript syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check Voice Convert integration and editor bridge
+        run: |
+          node --check frontend/voice-convert.js
+          node --check frontend/studio-fix.js
+          node --check frontend/app-fixed.js
