@@ -16,3 +16,6 @@ backend/outputs/*
 Thumbs.db
 .vscode/
 .idea/
+
+# Downloaded ML model weights (never commit checkpoints)
+backend/models/
