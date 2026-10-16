@@ -399,3 +399,10 @@ The studio History page now brings together two distinct sources: browser-local 
 - Render downloads must have a ZIP signature; successful HTML/error pages are rejected instead of being presented as audio exports.
 - Added dependency-free Node tests for success/failure states, transient errors, timeout, URL validation, and ZIP integrity. GitHub Actions now runs these tests.
 - This validates workflow reliability with mocked HTTP responses. It does not replace a real browser/backend test using model weights and actual audio files.
+
+
+## Phase 13 — Local end-to-end verification
+
+Run `python scripts/audiolab_e2e_smoke.py` while the FastAPI backend is running on `127.0.0.1` to verify health and persisted job history. Add `--transcribe-audio <file>` to submit a real local transcription job, or `--render-manifest <json> --confirm-voice-rights` to render a real dubbing project and validate/download its ZIP. Full Windows commands and the manifest format are in [docs/PHASE13_E2E.md](docs/PHASE13_E2E.md).
+
+The smoke client rejects non-loopback hosts. CI uses a synthetic local HTTP fixture to test the workflow and archive checks; this is not evidence that model inference succeeded on a particular computer. A real model-backed run must be executed on the local machine with actual audio inputs.
