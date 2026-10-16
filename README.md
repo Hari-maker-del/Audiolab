@@ -164,3 +164,29 @@ Reference recordings are not committed to this repository. Keep personal voice s
 Use only voices you own or have explicit permission to clone. Do not use the project for impersonation, fraud, deceptive identity claims, or unauthorized voice cloning.
 
 Official model project: https://github.com/AI4Bharat/IndicF5
+
+## Phase 2 — Local speech-to-text and reusable voices
+
+### Optional local transcription (₹0, runs on your computer)
+
+Speech-to-text uses the optional `faster-whisper` package; it is not installed by the core TTS requirements.
+
+From the repository root in PowerShell:
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m pip install -r backend\requirements-speech.txt
+```
+
+Restart Audiolab, open the Studio, select a voice reference, then use **Transcribe reference audio** to fill the reference transcript. Review and correct the transcript before generating. The first transcription downloads the selected Whisper model (default: `small`) and needs internet/disk space; inference then runs locally. To use a smaller model, set `AUDIOLAB_STT_MODEL=base` in the backend environment before starting the server. CPU transcription may be slow.
+
+- API: `POST /transcribe` with multipart `file` and optional `language`.
+- Status: `GET /health` includes `speech_to_text`; `GET /models` reports the optional model state.
+- Language metadata: `GET /languages`.
+
+### Reusable voice profiles
+
+Voice profiles are stored in browser IndexedDB, including the actual reference-audio bytes. Use **Save Voice Profile** to persist a profile and select it from the Generate page or the voice library to load its recording. Profiles are local to the browser and device; they are not cloud-synced. Existing profiles created before Phase 2 may contain metadata only and need their reference audio uploaded and saved again.
+
+### Language behavior
+
+Audiolab validates the selected language against the IndicF5 language allow-list. The current IndicF5 wrapper takes text, reference audio, and the exact reference transcript; it does not expose a separate language-token argument. Text/script and the reference guide multilingual output, so choose the correct language and review the generated audio. A language dropdown alone cannot guarantee pronunciation quality.
