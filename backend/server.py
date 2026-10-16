@@ -14,6 +14,10 @@ from starlette.background import BackgroundTask
 
 from audio import analyze, clean
 from audio_generation import EFFECTS, MUSIC_STYLES, generate_sound_effect, generate_music_sketch
+from ai_music import (
+    MusicGenerationFailed, MusicGenerationUnavailable, generate_ai_music,
+    music_generation_status,
+)
 from audio_tools import (
     trim_audio, normalize_audio, fade_audio, reverse_audio, speed_audio,
     pitch_audio, remove_silence, enhance_voice, merge_audio, mix_audio,
@@ -32,7 +36,7 @@ from voice_conversion import (
 
 app = FastAPI(
     title="Audiolab AI Audio Studio API",
-    version="2.4.0",
+    version="2.5.0",
     description=(
         "Local-first audio processing API. Model-backed endpoints require their optional local "
         "dependencies and model weights. Sound effects and music sketches are procedural DSP, "
@@ -148,7 +152,7 @@ def health():
     return {
         "status": "ok",
         "product": "Audiolab AI Audio Studio",
-        "version": "2.4.0",
+        "version": "2.5.0",
         "limits": {
             "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
             "max_text_characters": MAX_TEXT_LENGTH,
@@ -167,7 +171,8 @@ def health():
         "voice_conversion": get_voice_conversion_status(),
         "speech_to_text": speech_to_text_status(),
         "source_separation": separation_status(),
-        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist", "vocal-isolation"],
+        "ai_music": music_generation_status(),
+        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist", "vocal-isolation", "ai-music-generation"],
     }
 
 
@@ -201,6 +206,7 @@ def models_endpoint():
             get_voice_conversion_status(),
             speech_to_text_status(),
             separation_status(),
+            music_generation_status(),
         ]
     }
 
@@ -250,6 +256,27 @@ def music_sketch_endpoint(style: str = Form(...), duration: float = Form(12.0), 
     except Exception as exc:
         output.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"Music sketch generation failed: {exc}") from exc
+
+
+@app.post("/music-generate")
+def ai_music_endpoint(prompt: str = Form(...), duration: float = Form(8.0)):
+    """Generate music from a text prompt using the optional local MusicGen model."""
+    output = make_output("ai-music")
+    try:
+        generate_ai_music(prompt, duration, output)
+        return result_file(output)
+    except MusicGenerationUnavailable as exc:
+        output.unlink(missing_ok=True)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        output.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except MusicGenerationFailed as exc:
+        output.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        output.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="AI music generation failed due to an internal processing error.") from exc
 
 
 @app.post("/dub")
