@@ -17,6 +17,7 @@ from audio_tools import (
     eq_audio, compress_audio, noise_reduce_audio, reverb_audio, audio_quality,
 )
 from engine import IndicF5Engine, LANGS
+from speech_to_text import SpeechToTextUnavailable, status as speech_to_text_status, transcribe as transcribe_speech
 from voice_conversion import (
     VoiceConversionUnavailable,
     convert_voice,
@@ -117,7 +118,8 @@ def health():
         },
         "languages": list(LANGS.keys()),
         "voice_conversion": get_voice_conversion_status(),
-        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion"],
+        "speech_to_text": speech_to_text_status(),
+        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text"],
     }
 
 
@@ -136,8 +138,26 @@ def models_endpoint():
                 "note": "IndicF5 loads on the first generation request; model access and dependencies may be required.",
             },
             get_voice_conversion_status(),
+            speech_to_text_status(),
         ]
     }
+
+
+@app.post("/transcribe")
+def transcribe_endpoint(file: UploadFile = File(...), language: str = Form("")):
+    """Transcribe an uploaded recording with the optional local Whisper model."""
+    path = save_upload(file)
+    try:
+        try:
+            return transcribe_speech(path, language or None)
+        except SpeechToTextUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Speech transcription failed: {exc}") from exc
+    finally:
+        path.unlink(missing_ok=True)
 
 
 @app.post("/analyze")
