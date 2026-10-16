@@ -214,8 +214,9 @@ This file distinguishes source-code integration from successful runtime verifica
 - TTS runtime status depends on local model access, dependencies, and successful inference. This status file does not claim that TTS or voice conversion was run during this code update.
 
 ## Verification performed for this update
-- Repository files were inspected through GitHub.
-- GitHub Actions run [`Audiolab Static Checks`](https://github.com/Hari-maker-del/Audiolab/actions/runs/38346842714) completed successfully for commit `6ba8b1650fb5f2c8ab92d95ee5505a7435f42f54`: backend Python syntax compilation and frontend JavaScript syntax checks passed.
+- GitHub Actions run [`Audiolab Static Checks`](https://github.com/Hari-maker-del/Audiolab/actions/runs/38934724302) completed successfully for commit `66a38d44dc1cfa33d5ac7329e293ff0505dcadc3`: backend Python syntax compilation, frontend JavaScript syntax checks, and all 55 automated tests passed.
+- Regression coverage includes SRT millisecond rounding, Unicode subtitle text, invalid timestamps, overlapping segments, and sub-millisecond segment rejection.
+- Fixed the GPU backend image workflow to lowercase the GitHub owner before forming GHCR tags. The image build is still awaiting its result; a successful static-check run does not establish that the Docker image built or pushed.
 - No end-to-end audio inference was executed from this editing session.
 - No model checkpoint weights were committed.
-- A direct local clone/test attempt was blocked by the current environment's inability to resolve `github.com`; the successful verification above was performed by GitHub Actions.
+- A direct local clone/test attempt was blocked by the current environment's inability to resolve `github.com`; automated verification was performed by GitHub Actions.
