@@ -63,8 +63,12 @@ def validate_dub_segments(rows: Any) -> list[dict]:
     return normalized
 
 
+def _srt_milliseconds(seconds: float) -> int:
+    return max(0, int((Decimal(str(seconds)) * Decimal(1000)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
+
+
 def _srt_timestamp(seconds: float) -> str:
-    total_ms = max(0, int((Decimal(str(seconds)) * Decimal(1000)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
+    total_ms = _srt_milliseconds(seconds)
     hours, rem = divmod(total_ms, 3_600_000)
     minutes, rem = divmod(rem, 60_000)
     whole_seconds, milliseconds = divmod(rem, 1000)
@@ -72,11 +76,18 @@ def _srt_timestamp(seconds: float) -> str:
 
 
 def build_srt(segments: list[dict]) -> str:
-    """Build UTF-8 SubRip subtitles using the supplied segment timecodes."""
+    """Build UTF-8 SubRip subtitles and prevent zero-length rounded cues."""
     blocks = []
     for number, segment in enumerate(segments, start=1):
+        start_ms = _srt_milliseconds(segment["start"])
+        end_ms = _srt_milliseconds(segment["end"])
+        # Distinct sub-millisecond boundaries can round to the same SRT millisecond.
+        # Keep the exported cue valid; the render endpoint separately validates the
+        # normalized timeline before this helper is called.
+        if end_ms <= start_ms:
+            end_ms = start_ms + 1
         blocks.append(
-            f"{number}\n{_srt_timestamp(segment['start'])} --> "
-            f"{_srt_timestamp(segment['end'])}\n{segment['translated_text']}"
+            f"{number}\n{_srt_timestamp(Decimal(start_ms) / Decimal(1000))} --> "
+            f"{_srt_timestamp(Decimal(end_ms) / Decimal(1000))}\n{segment['translated_text']}"
         )
     return "\n\n".join(blocks) + ("\n" if blocks else "")
