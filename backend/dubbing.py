@@ -46,10 +46,16 @@ def validate_dub_segments(rows: Any) -> list[dict]:
             raise ValueError(f"Segment {index} text exceeds {MAX_SEGMENT_TEXT} characters.")
         if not translated_text:
             raise ValueError(f"Add a reviewed translation for segment {index}.")
+        # The timeline and SRT use millisecond precision. Reject positive but
+        # sub-millisecond slots that collapse to a zero-length normalized segment.
+        normalized_start = round(start, 3)
+        normalized_end = round(end, 3)
+        if normalized_end <= normalized_start:
+            raise ValueError(f"Segment {index} is too short to represent at millisecond precision.")
         normalized.append({
             "index": index,
-            "start": round(start, 3),
-            "end": round(end, 3),
+            "start": normalized_start,
+            "end": normalized_end,
             "source_text": source_text,
             "translated_text": translated_text,
         })
