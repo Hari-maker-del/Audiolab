@@ -22,7 +22,7 @@
         <div class="studio-library-avatar">${esc((v.name||'V').slice(0,1).toUpperCase())}</div>
         <div class="studio-library-copy"><strong>${esc(v.name||'My voice')}</strong><span>${esc(v.language||'Tamil')} · ${esc(v.duration||'Voice reference')}</span></div>
         <span class="studio-library-badge">SAVED</span>
-        <button class="studio-mini-action" data-use-voice="${i}" aria-label="Use ${esc(v.name||'voice')}">↗</button>
+        <button class="studio-mini-action" data-use-voice="${esc(v.id||("legacy-"+i))}" aria-label="Use ${esc(v.name||'voice')}">↗</button>
       </div>`).join('') : `
       <div class="studio-empty-state">
         <span class="studio-empty-icon">≈</span>
@@ -126,7 +126,7 @@
         <div class="voices-profile-avatar">${esc((v.name||'V').slice(0,1).toUpperCase())}<span></span></div>
         <div class="voices-profile-info"><strong>${esc(v.name||'My voice')}</strong><p>${esc(v.language||'Tamil')} <span>•</span> ${esc(v.duration||'Reference recording')}</p><small><i></i> Stored in this browser</small></div>
         <span class="voices-profile-status">READY</span>
-        <button class="btn secondary voices-use-btn" data-use-voice="${i}">Use voice <span aria-hidden="true">↗</span></button>
+        <button class="btn secondary voices-use-btn" data-use-voice="${esc(v.id||("legacy-"+i))}">Use voice <span aria-hidden="true">↗</span></button>
       </article>`).join(''):`
       <div class="voices-empty-library"><div class="voices-empty-icon">≈</div><h3>Your library starts with one voice.</h3><p>Add a reference recording you own or have permission to use. Your profile will appear here.</p><button class="btn primary" data-action="choose-file">Add your first voice <span aria-hidden="true">↗</span></button></div>`;
     return `
