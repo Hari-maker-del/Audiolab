@@ -123,6 +123,19 @@ def health():
     }
 
 
+@app.get("/languages")
+def languages_endpoint():
+    """Expose the actual language allow-list and explain model conditioning."""
+    return {
+        "model": "ai4bharat/IndicF5",
+        "languages": [
+            {"name": name, "code": code, "text_conditioning": "IndicF5 derives pronunciation from the supplied text/reference; the current wrapper does not expose a separate language-token argument."}
+            for name, code in LANGS.items()
+        ],
+        "note": "Choose the language matching the script and spoken content. Tanglish/Latin-script input may behave differently from native-script text; always listen to the result.",
+    }
+
+
 @app.get("/models")
 def models_endpoint():
     """Report real local model state without triggering heavy lazy loading."""
