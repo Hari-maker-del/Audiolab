@@ -5,6 +5,7 @@ restart marks unfinished work as interrupted rather than pretending it resumed.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -24,7 +25,7 @@ class PersistentJobStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.max_history = max(20, int(max_history))
         self._lock = threading.RLock()
-        with self._connect() as db:
+        with self._connection() as db
             db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS audio_jobs (
@@ -61,6 +62,15 @@ class PersistentJobStore:
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA busy_timeout = 10000")
         return db
+
+    @contextmanager
+    def _connection(self):
+        db = self._connect()
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
 
     @staticmethod
     def _encode_result(result):
