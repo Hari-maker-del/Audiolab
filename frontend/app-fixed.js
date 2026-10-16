@@ -101,7 +101,7 @@
               <h3>Shape every<br><em>second.</em></h3>
               <p>Open the timeline workspace to inspect, trim, and arrange audio clips.</p>
               <button class="studio-card-link" data-page="tools">Open audio editor <span>↗</span></button>
-              <div class="studio-card-decoration studio-edit-wave" aria-hidden="true">${spectrum.slice(0,0)}<span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+              <div class="studio-card-decoration studio-edit-wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
             </article>
           </div>
         </section>
