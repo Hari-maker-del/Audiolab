@@ -9,8 +9,8 @@
   const ACTIVE = new Set(["queued", "running"]);
 
   function normalizeBaseUrl(value) {
-    const base = String(value || "http://127.0.0.1:8000").trim().replace(/\\/+$/, "");
-    if (!/^https?:\\/\\//i.test(base)) throw new Error("Audiolab API address must start with http:// or https://.");
+    const base = String(value || "http://127.0.0.1:8000").trim().replace(/\/+$/, "");
+    if (!/^https?:\/\//i.test(base)) throw new Error("Audiolab API address must start with http:// or https://.");
     return base;
   }
 
