@@ -152,7 +152,7 @@ def run_smoke(*, base_url: str = "http://127.0.0.1:8000", timeout: float = 1800,
         raise SmokeTestError("Timeout must be greater than zero.")
 
     _, health = _json_request(base_url, "/health", api_key=api_key)
-    if health.get("status") not in {"ok", "healthy"} and health.get("public_health_probe") is not True:
+    if health.get("status") not in {"ok", "healthy"}:
         raise SmokeTestError("Backend health response did not confirm a healthy API.")
     on_message("PASS: backend health endpoint responded.")
     _, history = _json_request(base_url, "/jobs?limit=5", api_key=api_key)
