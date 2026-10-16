@@ -352,3 +352,16 @@ Studio → Tools → **Sentence-timed dubbing studio** provides a local dubbing-
 - The exported WAV is a dubbed voice track only. It does not include the original background audio, and it is not lip-sync.
 - Model inference remains local and requires the optional faster-whisper setup plus a working IndicF5 environment. Runtime audio quality must be verified on the target machine.
 
+
+## Phase 9 — Secure product and deployment foundation
+
+Phase 9 adds a guarded API and bounded queue for long-running sentence-timed dubbing jobs.
+
+- Remote API access is denied by default when no `AUDIOLAB_API_KEY` is configured; local loopback use continues to work. Health probes remain available.
+- When configured, API clients authenticate with `X-Audiolab-API-Key` or a Bearer token. **Never place this shared key in browser JavaScript or a public static frontend.** A public browser app needs a trusted server-side gateway and user authentication.
+- Per-client request limits, heavy-task limits, concurrent-work guards, request IDs, and upload-body limits reduce accidental overload.
+- The timed dubbing studio now submits transcription and render jobs to a bounded worker queue, displays queued/running progress, and polls job status. Render archives are temporary and are removed after download.
+- `GET /health` exposes access mode, configured limits, model readiness, and queue counts; `GET /models` remains the model/dependency status endpoint.
+- The queue and rate limiter are process-local. Restarting the backend clears job state. This is a secure single-process baseline, not yet a horizontally scaled durable worker platform.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for environment variables, API usage, security rules, and the production scaling boundary. Do not expose the local backend directly to the public internet.
