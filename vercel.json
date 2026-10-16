@@ -3,5 +3,11 @@
   "version": 2,
   "buildCommand": "",
   "outputDirectory": "frontend",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/landing.html"
+    }
+  ]
 }
