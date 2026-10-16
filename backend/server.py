@@ -15,6 +15,7 @@ from starlette.background import BackgroundTask
 
 from deployment import SlidingWindowRateLimiter, authorize_request
 from job_queue import BoundedJobQueue, QueueFullError
+from job_store import PersistentJobStore
 
 from audio import analyze, clean
 from voice_agent import understand_intent, create_reply
@@ -42,7 +43,7 @@ from voice_conversion import (
 
 app = FastAPI(
     title="Audiolab AI Audio Studio API",
-    version="2.8.0",
+    version="2.9.0",
     description=(
         "Local-first audio processing API. Model-backed endpoints require their optional local "
         "dependencies and model weights. Sound effects and music sketches are procedural DSP, "
@@ -72,6 +73,10 @@ REF = BASE / "reference"
 OUT = BASE / "outputs"
 REF.mkdir(exist_ok=True)
 OUT.mkdir(exist_ok=True)
+JOB_STORE = PersistentJobStore(
+    os.getenv("AUDIOLAB_JOB_DB", str(BASE / "audiolab-job-history.sqlite3")),
+    max_history=500,
+)
 
 engine = None
 engine_lock = threading.Lock()
@@ -91,6 +96,7 @@ HEAVY_ENDPOINTS = {
 JOB_QUEUE = BoundedJobQueue(
     max_workers=max(1, int(os.getenv("AUDIOLAB_JOB_WORKERS", "1"))),
     max_pending=max(1, int(os.getenv("AUDIOLAB_JOB_QUEUE_SIZE", "4"))),
+    store=JOB_STORE,
 )
 
 @app.middleware("http")
@@ -242,7 +248,7 @@ def health():
     return {
         "status": "ok",
         "product": "Audiolab AI Audio Studio",
-        "version": "2.8.0",
+        "version": "2.9.0",
         "limits": {
             "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
             "max_text_characters": MAX_TEXT_LENGTH,
@@ -257,6 +263,7 @@ def health():
             "frontend_secret_policy": "Never put AUDIOLAB_API_KEY in browser JavaScript.",
         },
         "job_queue": JOB_QUEUE.stats(),
+        "job_history": JOB_STORE.status(),
         "api_docs": "/docs",
         "model": "IndicF5",
         "device": engine.device if engine is not None else "not_loaded",
@@ -641,6 +648,36 @@ def enqueue_dub_render(
         target.unlink(missing_ok=True)
         raise
     return {"job_id": job_id, "status": "queued", "status_url": f"/jobs/{job_id}"}
+
+
+@app.get("/jobs")
+def list_audio_jobs(limit: int = 50, status: str = ""):
+    """List recent local job history, optionally filtered by lifecycle status."""
+    allowed_statuses = {"queued", "running", "succeeded", "failed"}
+    if status and status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail=f"Unsupported job status: {status}")
+    safe_limit = min(100, max(1, limit))
+    jobs = JOB_QUEUE.list_jobs(limit=safe_limit, status=status or None)
+    items = []
+    for job in jobs:
+        result = job.get("result")
+        # Never expose server filesystem paths in the public job-history API.
+        if job["status"] == "succeeded" and job["kind"] == "dub-render":
+            result = {
+                "download_url": f"/jobs/{job['job_id']}/download",
+                "filename": "audiolab-dubbing-project.zip",
+            }
+        items.append({
+            "job_id": job["job_id"],
+            "kind": job["kind"],
+            "status": job["status"],
+            "created_at": job["created_at"],
+            "started_at": job["started_at"],
+            "finished_at": job["finished_at"],
+            "result": result,
+            "error": job["error"],
+        })
+    return {"jobs": items, "count": len(items), "limit": safe_limit, "status_filter": status or None}
 
 
 @app.get("/jobs/{job_id}")

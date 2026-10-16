@@ -19,7 +19,7 @@ When deploying a container with `AUDIOLAB_HOST=0.0.0.0`, configure the API key a
 | `AUDIOLAB_HEAVY_REQUESTS_PER_MINUTE` | `8` | Per-client limit for expensive inference/job submissions |
 | `AUDIOLAB_MAX_CONCURRENT_JOBS` | `1` | Concurrent direct heavy requests per process |
 | `AUDIOLAB_JOB_WORKERS` | `1` | Worker threads for queued timed-dubbing tasks |
-| `AUDIOLAB_JOB_QUEUE_SIZE` | `4` | Maximum waiting queued tasks, in addition to active work |
+| `AUDIOLAB_JOB_QUEUE_SIZE` | `4` | Maximum waiting queued tasks, in addition to active work |\n| `AUDIOLAB_JOB_DB` | `backend/audiolab-job-history.sqlite3` | Local SQLite path for bounded job metadata history |
 
 Rate limits and job state are process-local. If the application is restarted, in-memory job state is lost. The job queue is deliberately bounded to protect local CPU/GPU memory and prevent unbounded backlog.
 
@@ -32,7 +32,7 @@ Rate limits and job state are process-local. If the application is restarted, in
 
 A full queue returns HTTP 429 with a retry hint. Job IDs are random, but authorization is still required for remote access. Keep the API key private and do not share job IDs as if they were access credentials.
 
-## Model management and recovery
+## Persistent job history (Phase 10)\n\n- `GET /jobs?limit=50` lists recent jobs; optional `status` filters to `queued`, `running`, `succeeded`, or `failed`. The limit is clamped to 1–100.\n- Job metadata is stored in a local SQLite file (default `backend/audiolab-job-history.sqlite3`, ignored by Git). Set `AUDIOLAB_JOB_DB` to choose another writable path. Back up this file only if you want to retain local job history.\n- On process restart, persisted `queued` and `running` records are marked failed with a restart message. Audiolab does not resume inference because uploaded arguments/callables are not persisted. Submit the job again.\n- Completed render archives are still temporary files and are not guaranteed to survive cleanup, download, or artifact expiry. The API never returns internal filesystem paths.\n- History is bounded to 500 records by default. This SQLite store does not make the worker queue distributed or safe for multi-replica deployment.\n\n## Model management and recovery
 
 - `GET /models` reports dependency/model readiness without forcing large model downloads.
 - `GET /health` reports model state, configured limits, access mode, and queue counts. API health does not guarantee that weights have loaded or that inference will succeed.

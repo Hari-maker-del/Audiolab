@@ -365,3 +365,17 @@ Phase 9 adds a guarded API and bounded queue for long-running sentence-timed dub
 - The queue and rate limiter are process-local. Restarting the backend clears job state. This is a secure single-process baseline, not yet a horizontally scaled durable worker platform.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for environment variables, API usage, security rules, and the production scaling boundary. Do not expose the local backend directly to the public internet.
+
+
+## Phase 10 — Persistent local job history and restart recovery
+
+Phase 10 builds on the Phase 9 job queue by storing job records in a local SQLite database. The default database is `backend/audiolab-job-history.sqlite3`; it is ignored by Git and can be moved with the `AUDIOLAB_JOB_DB` environment variable.
+
+- Completed, failed, and queued job metadata survives a backend restart.
+- `GET /jobs?limit=50` lists recent jobs. Use `status=queued`, `running`, `succeeded`, or `failed` to filter. The limit is bounded to 100.
+- `GET /jobs/{job_id}` continues to return an individual job; render results expose a download URL without exposing server filesystem paths.
+- On restart, any queued or running job is marked **failed** with an explicit interruption message. Inference is not resumed because worker callables and upload arguments are not persisted.
+- Job history is local and bounded to 500 records by default. The actual render ZIP remains a temporary artifact and can expire or be removed after download.
+- `GET /health` reports whether SQLite history is enabled and clarifies that job history persists while in-flight work does not resume.
+
+This is durable **job metadata**, not a distributed queue or durable artifact store. Keep the backend local unless you have implemented the Phase 9 server-side gateway and security controls. Tests cover restart recovery, completed-result persistence, status filtering, and retention pruning; model inference still needs a real local runtime test.
