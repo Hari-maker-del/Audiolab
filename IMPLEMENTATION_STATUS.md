@@ -4,6 +4,21 @@ Last updated: 2026-10-13
 
 This file distinguishes source-code integration from successful runtime verification. A feature is not marked runtime-verified just because its UI or endpoint exists.
 
+## Phase 1 core reliability updates (2026-10-16)
+
+### Implemented in source
+- Local FastAPI now binds to `127.0.0.1` by default instead of listening on every network interface. Set `AUDIOLAB_HOST` explicitly only when remote access is intentional and secured.
+- `GET /health` reports the real IndicF5 inference state (`loaded` / `not_loaded`) separately from API health. API health does not claim the model weights have loaded.
+- Failed TTS requests clean up temporary output files; successful responses retain the WAV until the response background task removes it.
+- Frontend status labels no longer claim IndicF5 is ready merely because the hosted Hugging Face Space API is reachable. A remote Space that does not expose inference readiness is labelled unverified.
+
+### Still requires runtime verification
+- Run the Windows launcher and confirm `GET /health` returns `status=ok`, `inference.loaded=false` before first generation, and `inference.loaded=true` after a successful real IndicF5 generation.
+- Generate real Tamil speech using an authorized reference audio clip and exact transcript; verify WAV playback/download.
+- Test voice conversion with OpenVoice model files and dependencies installed; otherwise the API should return an actionable 503.
+- Verify audio editor operations and saved history in the target browser. Source changes alone are not end-to-end proof.
+- Verify the Vercel frontend's configured inference route separately. A static Vercel deployment cannot reach a visitor's localhost backend from the internet.
+
 ## Voice Convert
 
 ### Implemented in the repository
