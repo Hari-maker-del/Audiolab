@@ -86,3 +86,11 @@ def test_validation_rejects_segment_over_project_duration():
             {"start": 0, "end": 1801, "translated_text": "Too long"}
         ])
 
+
+
+
+def test_validation_rejects_sub_millisecond_slot_after_normalization():
+    with pytest.raises(ValueError, match="millisecond precision"):
+        validate_dub_segments([
+            {"start": 0, "end": 0.0004, "translated_text": "Too short"}
+        ])
