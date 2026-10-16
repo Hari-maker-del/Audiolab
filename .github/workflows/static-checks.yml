@@ -17,6 +17,10 @@ jobs:
           python-version: "3.11"
       - name: Compile backend Python files
         run: python -m compileall -q backend
+      - name: Install lightweight audio test dependencies
+        run: python -m pip install pytest numpy scipy soundfile
+      - name: Test procedural audio generation
+        run: python -m pytest -q backend/tests
 
   frontend-syntax:
     name: Frontend JavaScript syntax
