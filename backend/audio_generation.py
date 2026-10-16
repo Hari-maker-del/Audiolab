@@ -53,7 +53,8 @@ def generate_sound_effect(effect: str, duration: float, output: str | Path, seed
         noise = rng.normal(0, 1, n).astype(np.float32)
         sos = signal.butter(3, [250, 7000], btype="bandpass", fs=SAMPLE_RATE, output="sos")
         sweep = signal.sosfilt(sos, noise)
-        swell = np.sin(np.linspace(0, np.pi, n, dtype=np.float32)) ** 1.5
+        # Clamp tiny negative floating-point values at sin(pi) before fractional power.
+        swell = np.maximum(np.sin(np.linspace(0, np.pi, n, dtype=np.float32)), 0.0) ** 1.5
         audio = sweep * swell
     elif effect == "impact":
         sweep = np.sin(2 * np.pi * (95 - 30 * t / duration) * t)
