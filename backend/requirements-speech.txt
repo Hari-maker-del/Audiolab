@@ -1,0 +1,3 @@
+# Optional local speech-to-text. Install into backend/.venv only when using Transcribe.
+# First model use downloads model weights; choose AUDIOLAB_STT_MODEL=base for a smaller/faster model.
+faster-whisper==1.1.1
