@@ -57,7 +57,7 @@ def validate_dub_segments(rows: Any) -> list[dict]:
 
 
 def _srt_timestamp(seconds: float) -> str:
-    total_ms = max(0, int(round(float(seconds) * 1000)))
+    total_ms = max(0, int(math.floor(float(seconds) * 1000 + 0.5)))
     hours, rem = divmod(total_ms, 3_600_000)
     minutes, rem = divmod(rem, 60_000)
     whole_seconds, milliseconds = divmod(rem, 1000)
