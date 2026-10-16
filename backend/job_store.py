@@ -25,7 +25,7 @@ class PersistentJobStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.max_history = max(20, int(max_history))
         self._lock = threading.RLock()
-        with self._connection() as db
+        with self._connection() as db:
             db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS audio_jobs (
@@ -93,7 +93,7 @@ class PersistentJobStore:
 
     def save(self, job: dict) -> None:
         result_json = self._encode_result(job.get("result"))
-        with self._lock, self._connect() as db:
+        with self._lock, self._connection() as db:
             db.execute(
                 """
                 INSERT INTO audio_jobs
@@ -116,17 +116,17 @@ class PersistentJobStore:
             self._prune(db)
 
     def delete(self, job_id: str) -> None:
-        with self._lock, self._connect() as db:
+        with self._lock, self._connection() as db:
             db.execute("DELETE FROM audio_jobs WHERE job_id = ?", (job_id,))
 
     def get(self, job_id: str) -> dict | None:
-        with self._lock, self._connect() as db:
+        with self._lock, self._connection() as db:
             row = db.execute("SELECT * FROM audio_jobs WHERE job_id = ?", (job_id,)).fetchone()
         return self._decode(row) if row else None
 
     def list(self, *, limit: int = 50, status: str | None = None) -> list[dict]:
         limit = min(100, max(1, int(limit)))
-        with self._lock, self._connect() as db:
+        with self._lock, self._connection() as db:
             if status:
                 rows = db.execute(
                     "SELECT * FROM audio_jobs WHERE status = ? ORDER BY created_at DESC LIMIT ?",
@@ -154,7 +154,7 @@ class PersistentJobStore:
         )
 
     def status(self) -> dict:
-        with self._lock, self._connect() as db:
+        with self._lock, self._connection() as db:
             count = db.execute("SELECT COUNT(*) FROM audio_jobs").fetchone()[0]
         return {
             "enabled": True,
