@@ -258,3 +258,28 @@ python -m pytest -q backend/tests
 - Check browser storage quota, clear-data behavior, and recovery from an offline backend.
 
 The source code and CI can validate deterministic DSP workflows. Actual AI model quality, Windows hardware compatibility, and full mobile-browser behavior still require local runtime verification.
+
+## Phase 5 — Local AI vocal isolation
+
+Audiolab now includes an optional source-separation workflow powered by **Demucs HTDemucs**. This is a real open-source audio-separation model, separate from the basic spectral noise-reduction filter.
+
+### Enable the feature on Windows
+
+From the repository root in PowerShell, after updating the project:
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m pip install -r backend\requirements-separation.txt
+```
+
+Restart `START-AUDIOLAB.bat`, open the Studio → **Audio Studio / Tools** → **Vocal isolation**, select an audio file, confirm you have rights to process it, then click **Separate vocals and instrumental**.
+
+- Endpoint: `POST /separate` with multipart `file`.
+- The result is a ZIP containing `vocals.wav` and `instrumental.wav`.
+- Status: `GET /health` and `GET /models` expose `demucs-htdemucs` package/model state without downloading weights.
+- The first separation downloads the Demucs model weights. Internet access and disk space are needed for that first run.
+- The backend automatically selects CUDA when PyTorch detects a supported NVIDIA GPU; otherwise it uses CPU. CPU inference can be slow, especially for long recordings.
+- The default request timeout is 1,200 seconds. Override with `AUDIOLAB_SEPARATION_TIMEOUT_SECONDS` if needed. Shorter clips are easier to test.
+- This is local inference; it does not call a paid cloud API. Demucs' output is an estimate and may contain bleed/artifacts depending on the recording.
+- Install the optional package only when you want source separation; it is not added to the core TTS requirements.
+
+The CI tests validate status reporting and output-file discovery. They do not install Demucs, download model weights, or prove real separation quality. Run a local test with a short recording and listen to both WAV stems.
