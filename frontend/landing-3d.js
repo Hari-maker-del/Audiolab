@@ -181,15 +181,19 @@
     ctx.arc(cx, cy, scale * 0.82, 0, TAU);
     ctx.fill();
 
-    if (!reducedMotion && !document.hidden) animationId = requestAnimationFrame(draw);
     lastTime = timestamp;
+  }
+
+  function animate(timestamp) {
+    draw(timestamp);
+    if (!reducedMotion && !document.hidden) animationId = requestAnimationFrame(animate);
   }
 
   if (ctx && scene) {
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(scene);
-    if (!reducedMotion) animationId = requestAnimationFrame(draw);
+    if (!reducedMotion) animationId = requestAnimationFrame(animate);
 
     scene.addEventListener("pointermove", event => {
       const r = scene.getBoundingClientRect();
@@ -200,7 +204,7 @@
 
     document.addEventListener("visibilitychange", () => {
       if (document.hidden && animationId) cancelAnimationFrame(animationId);
-      else if (!document.hidden && !reducedMotion) animationId = requestAnimationFrame(draw);
+      else if (!document.hidden && !reducedMotion) animationId = requestAnimationFrame(animate);
     });
     window.addEventListener("beforeunload", () => { if (animationId) cancelAnimationFrame(animationId); });
   } else if (canvas) {
