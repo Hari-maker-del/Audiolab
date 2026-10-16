@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import threading
+import time
 import uuid
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
@@ -25,7 +26,19 @@ from voice_conversion import (
     get_voice_conversion_status,
 )
 
-app = FastAPI(title="Audiolab AI Audio Studio API", version="2.2.0")
+app = FastAPI(
+    title="Audiolab AI Audio Studio API",
+    version="2.3.0",
+    description=(
+        "Local-first audio processing API. Model-backed endpoints require their optional local "
+        "dependencies and model weights. Sound effects and music sketches are procedural DSP, "
+        "not generative-AI music."
+    ),
+    contact={"name": "Audiolab", "url": "https://github.com/Hari-maker-del/Audiolab"},
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
 
 ALLOWED_ORIGINS = [x.strip() for x in os.getenv(
     "AUDIOLAB_CORS_ORIGINS",
@@ -53,6 +66,25 @@ MAX_UPLOAD_BYTES = int(os.getenv("AUDIOLAB_MAX_UPLOAD_MB", "100")) * 1024 * 1024
 MAX_TEXT_LENGTH = int(os.getenv("AUDIOLAB_MAX_TEXT_LENGTH", "10000"))
 
 
+@app.on_event("startup")
+def clean_stale_artifacts():
+    """Remove stale request/output artifacts left behind by an abrupt prior shutdown."""
+    cutoff = time.time() - 24 * 60 * 60
+    prefixes = ("audiolab-upload-", "audiolab-", "request-reference-", "dub-reference-")
+    for folder in (OUT, REF):
+        try:
+            for path in folder.iterdir():
+                if not path.is_file() or not path.name.startswith(prefixes):
+                    continue
+                try:
+                    if path.stat().st_mtime < cutoff:
+                        path.unlink(missing_ok=True)
+                except OSError:
+                    continue
+        except OSError:
+            continue
+
+
 def get_engine():
     global engine
     if engine is None:
@@ -63,7 +95,10 @@ def get_engine():
 
 
 def save_upload(upload: UploadFile) -> Path:
-    suffix = Path(upload.filename or "audio.wav").suffix or ".wav"
+    # Never trust a client filename as a filesystem suffix.
+    supplied_suffix = Path(upload.filename or "audio.wav").suffix.lower()
+    allowed_suffixes = {".wav", ".mp3", ".m4a", ".mp4", ".ogg", ".flac", ".aac", ".webm", ".opus"}
+    suffix = supplied_suffix if supplied_suffix in allowed_suffixes else ".audio"
     total = 0
     fd, name = tempfile.mkstemp(prefix="audiolab-upload-", suffix=suffix, dir=OUT)
     path = Path(name)
@@ -109,7 +144,13 @@ def health():
     return {
         "status": "ok",
         "product": "Audiolab AI Audio Studio",
-        "version": "2.2.0",
+        "version": "2.3.0",
+        "limits": {
+            "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
+            "max_text_characters": MAX_TEXT_LENGTH,
+            "max_concurrent_model_loads": 1,
+        },
+        "api_docs": "/docs",
         "model": "IndicF5",
         "device": engine.device if engine is not None else "not_loaded",
         "inference": {
@@ -358,13 +399,17 @@ def edit_endpoint(
 def merge_endpoint(files: list[UploadFile] = File(...)):
     if len(files) < 2:
         raise HTTPException(status_code=400, detail="Upload at least two audio files.")
-    paths = [save_upload(f) for f in files]
+    paths = []
     output = make_output("merged")
     try:
+        for upload in files:
+            paths.append(save_upload(upload))
         merge_audio([str(p) for p in paths], str(output))
         return result_file(output)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Merge failed: {exc}") from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Merge failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Merge failed due to an internal processing error.") from exc
     finally:
         for path in paths:
             path.unlink(missing_ok=True)
@@ -376,9 +421,11 @@ def merge_endpoint(files: list[UploadFile] = File(...)):
 def mix_endpoint(files: list[UploadFile] = File(...), volumes: str = Form("")):
     if not files:
         raise HTTPException(status_code=400, detail="Upload at least one audio file.")
-    paths = [save_upload(f) for f in files]
+    paths = []
     output = make_output("mix")
     try:
+        for upload in files:
+            paths.append(save_upload(upload))
         try:
             values = [float(x) for x in volumes.split(",") if x.strip()] if volumes.strip() else None
         except ValueError as exc:
@@ -387,8 +434,10 @@ def mix_endpoint(files: list[UploadFile] = File(...), volumes: str = Form("")):
         return result_file(output)
     except HTTPException:
         raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Mix failed: {exc}") from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Mix failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Mix failed due to an internal processing error.") from exc
     finally:
         for path in paths:
             path.unlink(missing_ok=True)
