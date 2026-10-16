@@ -71,6 +71,19 @@ async function browserAnalyze(file) {
   } finally { await context.close(); }
 }
 
+async function localTranscribe(file, language) {
+  const form = new FormData();
+  form.append("file", file, file.name || "reference.wav");
+  if (language) form.append("language", language);
+  const response = await fetch(`${LOCAL_API}/transcribe`, { method: "POST", body: form });
+  if (!response.ok) {
+    let detail = `Local speech-to-text returned ${response.status}`;
+    try { detail = (await response.json()).detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  return response.json();
+}
+
 async function localGenerate({ text, language, refText, file }) {
   const form = new FormData();
   form.append("text", text); form.append("language", language); form.append("ref_text", refText);
@@ -84,6 +97,7 @@ window.audiolabHFReady = Promise.resolve();
 window.audiolabHF = IS_LOCAL ? {
   health: localHealth,
   analyze: localAnalyze,
+  transcribe: localTranscribe,
   generate: localGenerate,
 } : {
   async health() {
@@ -92,6 +106,9 @@ window.audiolabHF = IS_LOCAL ? {
   },
   async analyze(file) {
     return browserAnalyze(file);
+  },
+  async transcribe() {
+    throw new Error("Local speech-to-text needs the Audiolab backend running on this computer. Open Audiolab from localhost and install backend/requirements-speech.txt.");
   },
   async generate({ text, refText, file }) {
     const client = await timeout(getHFClient(), 30000, "IndicF5 connection timed out. Please try again.");
