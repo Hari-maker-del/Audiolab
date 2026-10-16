@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import json
 import shutil
 import tempfile
 import threading
@@ -14,6 +15,7 @@ from starlette.background import BackgroundTask
 
 from audio import analyze, clean
 from voice_agent import understand_intent, create_reply
+from dubbing import build_srt, validate_dub_segments
 from audio_generation import EFFECTS, MUSIC_STYLES, generate_sound_effect, generate_music_sketch
 from ai_music import (
     MusicGenerationFailed, MusicGenerationUnavailable, generate_ai_music,
@@ -174,7 +176,7 @@ def health():
         "source_separation": separation_status(),
         "ai_music": music_generation_status(),
         "voice_agent": {"state": "ready", "mode": "local-rule-based-intent", "speech_input": speech_to_text_status()["available"], "spoken_output": "IndicF5 reference voice required"},
-        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist", "vocal-isolation", "ai-music-generation", "voice-agent"],
+        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist", "timed-dubbing", "subtitle-export", "vocal-isolation", "ai-music-generation", "voice-agent"],
     }
 
 
@@ -415,6 +417,172 @@ def dubbing_assist_endpoint(
             target.unlink(missing_ok=True)
         if not response_ready:
             output.unlink(missing_ok=True)
+
+
+def cleanup_dub_project(archive_path: Path, work_dir: Path):
+    archive_path.unlink(missing_ok=True)
+    shutil.rmtree(work_dir, ignore_errors=True)
+
+
+@app.post("/dub-transcribe")
+def dub_transcribe_endpoint(
+    source_file: UploadFile = File(...),
+    source_language: str = Form(""),
+):
+    """Return editable source speech segments with timestamps for a dubbing timeline."""
+    source = save_upload(source_file)
+    try:
+        try:
+            result = transcribe_speech(source, source_language or None)
+        except SpeechToTextUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        segments = result.get("segments") or []
+        if not segments:
+            raise HTTPException(status_code=422, detail="No timestamped speech segments were returned.")
+        if len(segments) > 120:
+            raise HTTPException(status_code=413, detail="This recording produced more than 120 segments. Use a shorter clip.")
+        return {
+            "language": result.get("language") or "unknown",
+            "duration": result.get("duration", 0),
+            "text": result.get("text", ""),
+            "segments": [
+                {
+                    "start": round(float(row["start"]), 3),
+                    "end": round(float(row["end"]), 3),
+                    "source_text": str(row.get("text") or ""),
+                    "translated_text": "",
+                }
+                for row in segments
+            ],
+            "provider": "local faster-whisper",
+            "note": "Review every transcription and enter the translated text. Translation is not automatic.",
+        }
+    finally:
+        source.unlink(missing_ok=True)
+
+
+@app.post("/dub-render")
+def dub_render_endpoint(
+    target_file: UploadFile = File(...),
+    segments_json: str = Form(...),
+    target_language: str = Form(...),
+    ref_text: str = Form(...),
+    consent: bool = Form(False),
+):
+    """Generate a sentence-timed dubbed voice track plus SRT in a downloadable ZIP."""
+    if not consent:
+        raise HTTPException(status_code=400, detail="Confirm you have permission to use the target voice reference.")
+    validate_text(ref_text, "Target voice reference transcript")
+    if target_language not in LANGS:
+        raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_language}")
+    try:
+        parsed = json.loads(segments_json)
+        segments = validate_dub_segments(parsed)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    import librosa
+    import numpy as np
+    import soundfile as sf
+
+    work_dir = OUT / f"audiolab-dub-project-{uuid.uuid4().hex}"
+    archive_path = make_output("dub-project", ".zip")
+    target = cleaned_reference = None
+    response_ready = False
+    try:
+        work_dir.mkdir(parents=True, exist_ok=False)
+        target = save_upload(target_file)
+        cleaned_reference = REF / f"dub-project-reference-{uuid.uuid4().hex}.wav"
+        clean(str(target), cleaned_reference)
+
+        sample_rate = 24000
+        duration = max(row["end"] for row in segments)
+        timeline = np.zeros(int(np.ceil(duration * sample_rate)) + 1, dtype=np.float32)
+        fit_report = []
+        active_engine = get_engine()
+
+        for row in segments:
+            segment_path = work_dir / f"segment-{row['index']:03d}.wav"
+            try:
+                active_engine.generate(
+                    row["translated_text"], cleaned_reference, ref_text, segment_path
+                )
+                speech, rate = sf.read(str(segment_path), dtype="float32", always_2d=False)
+                if getattr(speech, "ndim", 1) > 1:
+                    speech = np.mean(speech, axis=1)
+                speech = np.asarray(speech, dtype=np.float32)
+                if not speech.size or not np.isfinite(speech).all():
+                    raise ValueError(f"Generated audio for segment {row['index']} was empty or invalid.")
+                if int(rate) != sample_rate:
+                    speech = librosa.resample(speech, orig_sr=int(rate), target_sr=sample_rate)
+                slot_samples = max(1, int(round((row["end"] - row["start"]) * sample_rate)))
+                fit = "natural"
+                if len(speech) > slot_samples:
+                    rate_ratio = len(speech) / slot_samples
+                    if rate_ratio <= 2.0:
+                        speech = librosa.effects.time_stretch(speech, rate=rate_ratio)
+                        fit = "time-stretched"
+                    if len(speech) > slot_samples:
+                        speech = speech[:slot_samples]
+                        fit = "trimmed-to-slot"
+                start_sample = int(round(row["start"] * sample_rate))
+                end_sample = min(start_sample + len(speech), len(timeline))
+                if end_sample > start_sample:
+                    timeline[start_sample:end_sample] += speech[:end_sample - start_sample]
+                fit_report.append({
+                    "index": row["index"],
+                    "start": row["start"],
+                    "end": row["end"],
+                    "fit": fit,
+                    "slot_seconds": round(slot_samples / sample_rate, 3),
+                })
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=f"Segment {row['index']}: {exc}") from exc
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"Speech generation failed for segment {row['index']}. Check local IndicF5 setup and reference audio.") from exc
+            finally:
+                segment_path.unlink(missing_ok=True)
+
+        peak = float(np.max(np.abs(timeline))) if timeline.size else 0.0
+        if peak > 0.98:
+            timeline *= (0.98 / peak)
+        dubbed_path = work_dir / "dubbed_voice.wav"
+        sf.write(str(dubbed_path), timeline, sample_rate)
+        subtitle_path = work_dir / "subtitles.srt"
+        subtitle_path.write_text(build_srt(segments), encoding="utf-8")
+        metadata_path = work_dir / "segments.json"
+        metadata_path.write_text(json.dumps({
+            "target_language": target_language,
+            "sample_rate": sample_rate,
+            "alignment": "source speech timestamps; generated segments are time-stretched or trimmed when longer than their slots",
+            "segments": segments,
+            "fit_report": fit_report,
+            "background_audio_included": False,
+            "lip_sync": False,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+            bundle.write(dubbed_path, arcname="dubbed_voice.wav")
+            bundle.write(subtitle_path, arcname="subtitles.srt")
+            bundle.write(metadata_path, arcname="segments.json")
+        response = FileResponse(
+            archive_path,
+            media_type="application/zip",
+            filename="audiolab-dubbing-project.zip",
+            background=BackgroundTask(cleanup_dub_project, archive_path, work_dir),
+        )
+        response_ready = True
+        return response
+    finally:
+        if target is not None:
+            target.unlink(missing_ok=True)
+        if cleaned_reference is not None:
+            cleaned_reference.unlink(missing_ok=True)
+        if not response_ready:
+            archive_path.unlink(missing_ok=True)
+            shutil.rmtree(work_dir, ignore_errors=True)
 
 
 def cleanup_separation_artifacts(archive_path: Path, work_dir: Path):
