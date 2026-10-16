@@ -4,6 +4,28 @@ Last updated: 2026-10-16
 
 This file distinguishes source-code integration from successful runtime verification. A feature is not marked runtime-verified just because its UI or endpoint exists.
 
+## Phase 9 secure product and deployment foundation (2026-10-16)
+
+### Implemented in source
+- Added a local-only-by-default access guard. Without `AUDIOLAB_API_KEY`, API routes accept loopback clients only; remote callers are denied. The health probe remains public for platform liveness checks.
+- Added constant-time API-key verification using `X-Audiolab-API-Key` or a Bearer token when a trusted server-side client is configured. The key must never be embedded in public browser JavaScript.
+- Added per-client sliding-window request limits, separate expensive-task submission limits, request IDs, request-body size checks, and a bounded concurrency guard for direct heavy inference routes.
+- Added a bounded worker queue for sentence-timed dubbing transcription and rendering. The frontend now submits jobs, shows queued/running progress, polls status, and downloads the finished ZIP.
+- Added job status and download endpoints. Failed tasks return a bounded error message; downloaded render artifacts are deleted after delivery.
+- Extended `/health` with deployment access mode, configured limits, model readiness, and queue diagnostics; `/models` remains the model/dependency status endpoint.
+- Added `DEPLOYMENT.md` with secret handling, environment variables, job API, recovery steps, and scaling limits.
+
+### Scope and deployment boundaries
+- The job queue, rate limiter, and job registry are in-process and bounded. A restart clears job state; this is not yet a durable distributed queue.
+- Do not put a shared backend key in the public static frontend. A public browser product needs a trusted server-side gateway with user authentication, TLS, user-scoped quotas, and secret management.
+- Horizontal scaling requires a durable external queue, shared artifact storage, job persistence, and cleanup/expiry policies.
+- The local-only default protects the existing local inference workflow without claiming that a public multi-user deployment is production-ready.
+
+### Verification
+- GitHub Actions run [`Audiolab Static Checks`](https://github.com/Hari-maker-del/Audiolab/actions/runs/38935404267) passed for the Phase 9 queue/frontend changes: Python compilation, JavaScript syntax checks, and **60 automated tests** passed.
+- Tests cover local-only access rules, API-key checks, rate-limit windows, job completion/failure states, and the existing audio/SRT validation suite.
+- No end-to-end Whisper or IndicF5 inference was run from this editing session. The Docker image workflow is tracked separately and must finish successfully before claiming a verified container build.
+
 ## Phase 1 core reliability updates (2026-10-16)
 
 ### Implemented in source
