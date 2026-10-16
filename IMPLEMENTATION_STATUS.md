@@ -251,3 +251,13 @@ This file distinguishes source-code integration from successful runtime verifica
 - Added automated loopback HTTP fixture tests for the submit → poll → history → download workflow, bad health responses, remote-host rejection, archive integrity, and render-consent gating.
 - Instructions: [docs/PHASE13_E2E.md](docs/PHASE13_E2E.md).
 - Verification boundary: CI fixture uses synthetic test payloads and does not load IndicF5 or faster-whisper models. Real model inference still must be run on the user's local Windows machine with audio files; this update does not claim such a run occurred.
+
+
+## Phase 14 — Local readiness diagnostics (2026-10-16)
+
+- Added `scripts/audiolab_preflight.py` to report Python/OS, required and optional dependency availability, free disk space, virtual-environment presence, local API health, model load state, and optional feature status.
+- Added JSON output for troubleshooting and CI/automation use.
+- API checks are loopback-only; the command is read-only and never installs packages, downloads models, or submits audio.
+- Added regression tests for missing dependencies, unavailable API, optional-feature warnings, JSON serialization, and remote-host rejection.
+- Instructions: [docs/PHASE14_LOCAL_PREFLIGHT.md](docs/PHASE14_LOCAL_PREFLIGHT.md).
+- Verification boundary: a passing preflight is not a real model inference test. Phase 13 local audio checks are still required to verify actual generation on the user's Windows machine.
