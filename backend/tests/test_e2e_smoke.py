@@ -137,6 +137,22 @@ def test_render_smoke_exercises_http_submit_poll_history_and_download(tmp_path):
         }
 
 
+def test_render_requires_explicit_voice_permission(tmp_path):
+    with FakeAudiolabServer() as server, tempfile.TemporaryDirectory() as source_dir:
+        source_root = Path(source_dir)
+        (source_root / "target.wav").write_bytes(b"test target voice")
+        manifest = source_root / "manifest.json"
+        manifest.write_text(json.dumps({
+            "target_audio": "target.wav", "target_language": "Tamil",
+            "ref_text": "வணக்கம்",
+            "segments": [{"start": 0, "end": 1, "translated_text": "வணக்கம்"}],
+        }), encoding="utf-8")
+        with pytest.raises(SmokeTestError, match="permission"):
+            run_smoke(base_url=server.base_url, render_manifest=str(manifest),
+                      output_dir=str(tmp_path), on_message=lambda _message: None)
+        assert not server.submitted
+
+
 def test_smoke_stops_if_backend_health_is_invalid():
     class BadHealthHandler(BaseHTTPRequestHandler):
         def log_message(self, *_args):
