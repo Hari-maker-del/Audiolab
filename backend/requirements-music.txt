@@ -1,0 +1,3 @@
+# Optional local text-to-music generation. Core Audiolab already installs PyTorch,
+# Transformers and SoundFile; EnCodec is an additional MusicGen audio-tokenizer dependency.
+encodec==0.1.1
