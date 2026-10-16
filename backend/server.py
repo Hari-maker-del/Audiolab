@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from audio import analyze, clean
+from audio_generation import EFFECTS, MUSIC_STYLES, generate_sound_effect, generate_music_sketch
 from audio_tools import (
     trim_audio, normalize_audio, fade_audio, reverse_audio, speed_audio,
     pitch_audio, remove_silence, enhance_voice, merge_audio, mix_audio,
@@ -119,7 +120,7 @@ def health():
         "languages": list(LANGS.keys()),
         "voice_conversion": get_voice_conversion_status(),
         "speech_to_text": speech_to_text_status(),
-        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text"],
+        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist"],
     }
 
 
@@ -171,6 +172,98 @@ def transcribe_endpoint(file: UploadFile = File(...), language: str = Form("")):
             raise HTTPException(status_code=500, detail=f"Speech transcription failed: {exc}") from exc
     finally:
         path.unlink(missing_ok=True)
+
+
+@app.post("/sound-effects")
+def sound_effect_endpoint(effect: str = Form(...), duration: float = Form(3.0), seed: int = Form(7)):
+    """Generate a deterministic local sound effect WAV using DSP."""
+    output = make_output("sfx")
+    try:
+        generate_sound_effect(effect.strip().lower(), duration, output, seed)
+        return result_file(output)
+    except ValueError as exc:
+        output.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        output.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"Sound-effect generation failed: {exc}") from exc
+
+
+@app.post("/music-sketch")
+def music_sketch_endpoint(style: str = Form(...), duration: float = Form(12.0), seed: int = Form(11)):
+    """Generate a local procedural music bed; this is not an AI music model."""
+    output = make_output("music-sketch")
+    try:
+        generate_music_sketch(style.strip().lower(), duration, output, seed)
+        return result_file(output)
+    except ValueError as exc:
+        output.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        output.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"Music sketch generation failed: {exc}") from exc
+
+
+@app.post("/dub")
+def dubbing_assist_endpoint(
+    source_file: UploadFile = File(...),
+    target_file: UploadFile = File(...),
+    source_language: str = Form(""),
+    target_language: str = Form(...),
+    translated_text: str = Form(...),
+    ref_text: str = Form(...),
+    consent: bool = Form(...),
+):
+    """Create a target-language dubbed voice track using a user-reviewed translation."""
+    if not consent:
+        raise HTTPException(status_code=400, detail="Confirm you have rights to use both recordings and the target voice.")
+    validate_text(translated_text, "Translated script")
+    validate_text(ref_text, "Target voice reference transcript")
+    if target_language not in LANGS:
+        raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_language}")
+    source = target = None
+    output = make_output("dubbed")
+    response_ready = False
+    try:
+        source = save_upload(source_file)
+        target = save_upload(target_file)
+        try:
+            source_result = transcribe_speech(source, source_language or None)
+            clean(str(target), REF / f"dub-reference-{uuid.uuid4().hex}.wav")
+            cleaned = next(REF.glob("dub-reference-*.wav"), None)
+            if cleaned is None:
+                raise RuntimeError("Could not prepare target voice reference.")
+            try:
+                get_engine().generate(translated_text, cleaned, ref_text, output)
+            finally:
+                cleaned.unlink(missing_ok=True)
+        except SpeechToTextUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Dubbing assist failed: {exc}") from exc
+        from urllib.parse import quote
+        response = FileResponse(
+            output, media_type="audio/wav", filename=output.name,
+            headers={
+                "X-Audiolab-Source-Language": str(source_result.get("language") or "unknown"),
+                "X-Audiolab-Source-Transcript": quote(source_result.get("text", ""))[:1800],
+                "X-Audiolab-Dubbing-Mode": "user-reviewed-translation",
+            },
+            background=BackgroundTask(output.unlink, missing_ok=True),
+        )
+        response_ready = True
+        return response
+    finally:
+        if source is not None:
+            source.unlink(missing_ok=True)
+        if target is not None:
+            target.unlink(missing_ok=True)
+        if not response_ready:
+            output.unlink(missing_ok=True)
 
 
 @app.post("/analyze")
