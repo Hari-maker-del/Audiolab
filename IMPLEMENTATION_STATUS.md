@@ -1,6 +1,6 @@
 # Audiolab Implementation Status
 
-Last updated: 2026-10-13
+Last updated: 2026-10-16
 
 This file distinguishes source-code integration from successful runtime verification. A feature is not marked runtime-verified just because its UI or endpoint exists.
 
