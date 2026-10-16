@@ -19,6 +19,30 @@ This file distinguishes source-code integration from successful runtime verifica
 - Verify audio editor operations and saved history in the target browser. Source changes alone are not end-to-end proof.
 - Verify the Vercel frontend's configured inference route separately. A static Vercel deployment cannot reach a visitor's localhost backend from the internet.
 
+## Phase 2 speech intelligence updates (2026-10-16)
+
+### Implemented in source
+- Added optional local speech-to-text through `faster-whisper` in `backend/speech_to_text.py`; model loading is lazy and errors explicitly if the optional dependency/model cannot load.
+- Added `POST /transcribe`, with optional requested language, segment timestamps, detected language/confidence, and cleanup of uploaded temporary audio.
+- Added `GET /languages` and exposed actual speech-to-text readiness in `/health` and `/models`.
+- Added `backend/requirements-speech.txt` to keep STT dependencies optional and separate from the core IndicF5 environment.
+- Added a Generate-page **Transcribe reference audio** action wired to the local endpoint; it fills the reference transcript but tells users to review it.
+- Upgraded browser IndexedDB voice storage to retain multiple named profile audio blobs, not just metadata. The Generate selector and voice-library actions can load a saved profile's actual reference audio.
+- Documented local installation, model download behavior, profile storage scope, and IndicF5 language-conditioning limitations in README.
+- Expanded CI syntax checks for the changed frontend scripts.
+
+### Language-awareness limitation (intentionally disclosed)
+- The API validates the chosen language against IndicF5's supported language allow-list and exposes language metadata.
+- The current IndicF5 model wrapper accepts text, reference audio, and the exact reference transcript; it does not expose a separate language-token parameter. Text/script and reference guide output. The UI now discloses this instead of implying the dropdown guarantees pronunciation quality.
+- Tanglish/Latin-script and mixed-language quality still needs listening-based validation for each language.
+
+### Still requires runtime verification
+- Install the optional dependency with `python -m pip install -r backend/requirements-speech.txt` in Audiolab's backend environment.
+- First transcription downloads Whisper model weights (default `small`); confirm Tamil transcription, detected language, timestamps, and review/edit flow on a real recording.
+- Save two distinct voice profiles, refresh the page, select each profile, and verify generation uses the selected reference audio.
+- Run a real IndicF5 generation test for each target language before describing that language as quality-verified.
+- CI syntax checks and source integration do not establish speech recognition accuracy or model inference success.
+
 ## Voice Convert
 
 ### Implemented in the repository
