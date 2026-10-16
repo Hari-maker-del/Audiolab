@@ -36,7 +36,8 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"]
+    allow_headers=["*"],
+    expose_headers=["X-Audiolab-Source-Language", "X-Audiolab-Source-Transcript", "X-Audiolab-Dubbing-Mode"]
 )
 
 BASE = Path(__file__).resolve().parent
@@ -243,12 +244,12 @@ def dubbing_assist_endpoint(
             raise
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Dubbing assist failed: {exc}") from exc
-        from urllib.parse import quote
+        import base64
         response = FileResponse(
             output, media_type="audio/wav", filename=output.name,
             headers={
                 "X-Audiolab-Source-Language": str(source_result.get("language") or "unknown"),
-                "X-Audiolab-Source-Transcript": quote(source_result.get("text", ""))[:1800],
+                "X-Audiolab-Source-Transcript": base64.urlsafe_b64encode(source_result.get("text", "").encode("utf-8")[:1200]).decode("ascii"),
                 "X-Audiolab-Dubbing-Mode": "user-reviewed-translation",
             },
             background=BackgroundTask(output.unlink, missing_ok=True),
