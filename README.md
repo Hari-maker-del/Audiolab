@@ -283,3 +283,29 @@ Restart `START-AUDIOLAB.bat`, open the Studio → **Audio Studio / Tools** → *
 - Install the optional package only when you want source separation; it is not added to the core TTS requirements.
 
 The CI tests validate status reporting and output-file discovery. They do not install Demucs, download model weights, or prove real separation quality. Run a local test with a short recording and listen to both WAV stems.
+
+## Phase 6 — Real AI text-to-music generation
+
+Audiolab now has an optional **MusicGen Small** integration at `POST /music-generate`. Unlike the existing procedural music sketch tool, this endpoint loads an actual text-conditioned generative music model and produces a WAV from a natural-language prompt.
+
+### Enable it on Windows
+
+From the repository root in PowerShell:
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m pip install -r backend\requirements-music.txt
+```
+
+Restart `START-AUDIOLAB.bat`, open Studio → **Audio Studio / Tools** → **Text to music**, describe the music, select a duration from 5–15 seconds, and generate.
+
+- Model: `facebook/musicgen-small`.
+- Endpoint: `POST /music-generate` with `prompt` and `duration` multipart fields.
+- Output: downloadable WAV audio.
+- Status: `GET /health` and `GET /models` report whether the dependencies/model are available or loaded without forcing a model download.
+- First generation downloads model weights from Hugging Face (roughly 1 GB of model files; leave extra disk space for cache). Internet access is required for this first download.
+- The backend chooses CUDA if PyTorch detects a compatible NVIDIA GPU, otherwise CPU. CPU generation can be very slow; 5–8 second clips are best for an initial test.
+- This is local inference, not a paid hosted API. It is not included in the default core requirements.
+- Requests are limited to 500 prompt characters and 5–15 seconds to reduce resource use. A single generation runs at a time.
+- **License warning:** the upstream MusicGen Small model weights are licensed CC-BY-NC 4.0 (Creative Commons Attribution-NonCommercial 4.0). Treat this integration as non-commercial research/prototyping unless you obtain appropriate separate rights; do not assume it is cleared for commercial Audiolab use. See the [upstream model card](https://huggingface.co/facebook/musicgen-small) and review its current terms before distributing or monetizing generated output.
+
+The CI tests check request validation and status reporting without downloading model weights. They do not prove successful inference or generated-audio quality on your machine.
