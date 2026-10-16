@@ -190,3 +190,27 @@ Voice profiles are stored in browser IndexedDB, including the actual reference-a
 ### Language behavior
 
 Audiolab validates the selected language against the IndicF5 language allow-list. The current IndicF5 wrapper takes text, reference audio, and the exact reference transcript; it does not expose a separate language-token argument. Text/script and the reference guide multilingual output, so choose the correct language and review the generated audio. A language dropdown alone cannot guarantee pronunciation quality.
+
+## Phase 3 — Advanced audio creation and dubbing assist
+
+### Local sound effects
+
+Open Studio → **Tools** → Sound effects generator. The backend's `POST /sound-effects` endpoint creates WAV files locally using NumPy/SciPy DSP. Available effects: whoosh, impact, riser, rain texture, ambient drone, laser, and chime. Duration is limited to 0.25–20 seconds.
+
+### Procedural music sketches
+
+The `POST /music-sketch` endpoint creates short procedural beds (ambient, cinematic, lo-fi, pulse) without an external service. Duration is limited to 2–60 seconds. **This is a procedural sketch generator, not an AI music-generation model or a finished composition.**
+
+### Dubbing assist
+
+Studio → Tools → **Dubbing assist** takes an original recording, a reviewed target-language script, an authorized target-voice reference, and the exact target-reference transcript. It uses the optional local Whisper STT model to transcribe the original, then uses the existing IndicF5 backend to synthesize the supplied target-language script. It returns the WAV and exposes the detected source language/transcript as response metadata.
+
+- The translation must be supplied and reviewed by the user; this phase does not translate automatically.
+- It currently generates one target-language speech track, not word/sentence-aligned dubbing or original background-audio mixing.
+- The target-language selector is validated, but the current IndicF5 wrapper does not pass a separate language-token argument. Listen and verify pronunciation.
+- Install `backend/requirements-speech.txt` as described in Phase 2. Start the local backend before using these tools.
+- The user must have rights to the source audio and permission to use the target voice. Voice recordings are uploaded to the local backend for processing and temporary files are cleaned after the request.
+
+### Not yet delivered as AI-model features
+
+Real generative music, source-separated vocal isolation, automatic translation, and a full conversational voice agent need separate model integrations and runtime tests. The procedural music bed and existing spectral noise-reduction filter must not be described as AI music generation or true vocal source separation.
