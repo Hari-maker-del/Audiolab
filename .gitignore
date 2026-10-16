@@ -1,6 +1,7 @@
 # Local Python environment
 backend/.venv/
 backend/.env
+backend/audiolab-job-history.sqlite3*
 backend/__pycache__/
 backend/reference/*
 backend/outputs/*
