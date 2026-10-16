@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from audio import analyze, clean
+from voice_agent import understand_intent, create_reply
 from audio_generation import EFFECTS, MUSIC_STYLES, generate_sound_effect, generate_music_sketch
 from ai_music import (
     MusicGenerationFailed, MusicGenerationUnavailable, generate_ai_music,
@@ -36,7 +37,7 @@ from voice_conversion import (
 
 app = FastAPI(
     title="Audiolab AI Audio Studio API",
-    version="2.5.0",
+    version="2.6.0",
     description=(
         "Local-first audio processing API. Model-backed endpoints require their optional local "
         "dependencies and model weights. Sound effects and music sketches are procedural DSP, "
@@ -152,7 +153,7 @@ def health():
     return {
         "status": "ok",
         "product": "Audiolab AI Audio Studio",
-        "version": "2.5.0",
+        "version": "2.6.0",
         "limits": {
             "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
             "max_text_characters": MAX_TEXT_LENGTH,
@@ -172,7 +173,8 @@ def health():
         "speech_to_text": speech_to_text_status(),
         "source_separation": separation_status(),
         "ai_music": music_generation_status(),
-        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist", "vocal-isolation", "ai-music-generation"],
+        "voice_agent": {"state": "ready", "mode": "local-rule-based-intent", "speech_input": speech_to_text_status()["available"], "spoken_output": "IndicF5 reference voice required"},
+        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist", "vocal-isolation", "ai-music-generation", "voice-agent"],
     }
 
 
@@ -207,6 +209,7 @@ def models_endpoint():
             speech_to_text_status(),
             separation_status(),
             music_generation_status(),
+            {"id": "voice-agent", "name": "Audiolab Voice Agent", "task": "conversational-assistant", "state": "ready", "mode": "local-rule-based-intent"},
         ]
     }
 
@@ -256,6 +259,81 @@ def music_sketch_endpoint(style: str = Form(...), duration: float = Form(12.0), 
     except Exception as exc:
         output.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"Music sketch generation failed: {exc}") from exc
+
+
+@app.post("/voice-agent")
+def voice_agent_endpoint(
+    message: str = Form(""),
+    audio_file: UploadFile | None = File(None),
+    language: str = Form(""),
+    voice_reference: UploadFile | None = File(None),
+    voice_reference_text: str = Form(""),
+    consent: bool = Form(False),
+):
+    """Understand a typed/spoken request and optionally speak the answer with IndicF5."""
+    typed_message = (message or "").strip()
+    if not typed_message and audio_file is None:
+        raise HTTPException(status_code=400, detail="Enter a message or upload a speech recording.")
+    if voice_reference is not None:
+        if not consent:
+            raise HTTPException(status_code=400, detail="Confirm you have permission to use the reply voice reference.")
+        validate_text(voice_reference_text, "Exact voice-reference transcript")
+
+    input_path = reference_path = cleaned_reference = output = None
+    try:
+        if audio_file is not None:
+            input_path = save_upload(audio_file)
+            try:
+                transcription = transcribe_speech(input_path, language or None)
+            except SpeechToTextUnavailable as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            typed_message = str(transcription.get("text") or "").strip()
+            if not typed_message:
+                raise HTTPException(status_code=400, detail="No speech was recognized. Try a clearer or shorter recording.")
+
+        try:
+            intent_result = understand_intent(typed_message)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        reply = create_reply(intent_result)
+        reply["recognized_text"] = typed_message
+        reply["transcription_language"] = language or "auto"
+        reply["conversation_memory"] = "client-managed; no server-side conversation history stored"
+
+        if voice_reference is None:
+            return reply
+
+        reference_path = save_upload(voice_reference)
+        cleaned_reference = REF / f"agent-reference-{uuid.uuid4().hex}.wav"
+        clean(str(reference_path), cleaned_reference)
+        output = make_output("voice-agent-reply")
+        try:
+            get_engine().generate(reply["reply"], cleaned_reference, voice_reference_text, output)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="Spoken reply generation failed. Check IndicF5 setup and reference audio.") from exc
+
+        import base64
+        response = FileResponse(
+            output,
+            media_type="audio/wav",
+            filename="audiolab-voice-agent-reply.wav",
+            headers={
+                "X-Audiolab-Agent-Intent": reply["intent"],
+                "X-Audiolab-Agent-Reply": base64.urlsafe_b64encode(reply["reply"].encode("utf-8")).decode("ascii"),
+                "X-Audiolab-Agent-Recognized": base64.urlsafe_b64encode(typed_message.encode("utf-8")[:1600]).decode("ascii"),
+            },
+            background=BackgroundTask(output.unlink, missing_ok=True),
+        )
+        output = None
+        return response
+    finally:
+        for path in (input_path, reference_path, cleaned_reference, output):
+            if path is not None:
+                path.unlink(missing_ok=True)
 
 
 @app.post("/music-generate")
