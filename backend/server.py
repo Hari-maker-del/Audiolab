@@ -10,8 +10,11 @@ import zipfile
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.background import BackgroundTask
+
+from deployment import SlidingWindowRateLimiter, authorize_request
+from job_queue import BoundedJobQueue, QueueFullError
 
 from audio import analyze, clean
 from voice_agent import understand_intent, create_reply
@@ -39,7 +42,7 @@ from voice_conversion import (
 
 app = FastAPI(
     title="Audiolab AI Audio Studio API",
-    version="2.7.0",
+    version="2.8.0",
     description=(
         "Local-first audio processing API. Model-backed endpoints require their optional local "
         "dependencies and model weights. Sound effects and music sketches are procedural DSP, "
@@ -75,6 +78,90 @@ engine_lock = threading.Lock()
 
 MAX_UPLOAD_BYTES = int(os.getenv("AUDIOLAB_MAX_UPLOAD_MB", "100")) * 1024 * 1024
 MAX_TEXT_LENGTH = int(os.getenv("AUDIOLAB_MAX_TEXT_LENGTH", "10000"))
+AUDIOLAB_API_KEY = os.getenv("AUDIOLAB_API_KEY", "").strip()
+REQUESTS_PER_MINUTE = max(1, int(os.getenv("AUDIOLAB_REQUESTS_PER_MINUTE", "120")))
+HEAVY_REQUESTS_PER_MINUTE = max(1, int(os.getenv("AUDIOLAB_HEAVY_REQUESTS_PER_MINUTE", "8")))
+MAX_CONCURRENT_HEAVY_REQUESTS = max(1, int(os.getenv("AUDIOLAB_MAX_CONCURRENT_JOBS", "1")))
+RATE_LIMITER = SlidingWindowRateLimiter()
+HEAVY_REQUESTS = threading.BoundedSemaphore(MAX_CONCURRENT_HEAVY_REQUESTS)
+HEAVY_ENDPOINTS = {
+    "/generate", "/voice-convert", "/dub", "/dub-render", "/separate",
+    "/music-generate", "/voice-agent",
+}
+JOB_QUEUE = BoundedJobQueue(
+    max_workers=max(1, int(os.getenv("AUDIOLAB_JOB_WORKERS", "1"))),
+    max_pending=max(1, int(os.getenv("AUDIOLAB_JOB_QUEUE_SIZE", "4"))),
+)
+
+@app.middleware("http")
+async def protect_and_limit_requests(request, call_next):
+    """Local-only by default; remote API calls require a server-side key."""
+    request_id = request.headers.get("X-Request-ID", "")[:80] or uuid.uuid4().hex
+    client_host = request.client.host if request.client else None
+    supplied_key = request.headers.get("X-Audiolab-API-Key", "")
+    if not supplied_key:
+        authorization = request.headers.get("Authorization", "")
+        if authorization.lower().startswith("bearer "):
+            supplied_key = authorization[7:].strip()
+    allowed, reason = authorize_request(
+        path=request.url.path,
+        method=request.method,
+        client_host=client_host,
+        configured_api_key=AUDIOLAB_API_KEY,
+        supplied_api_key=supplied_key,
+    )
+    if not allowed:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": reason, "request_id": request_id},
+            headers={"X-Request-ID": request_id},
+        )
+
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_UPLOAD_BYTES + (2 * 1024 * 1024):
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Request body exceeds the configured upload limit.", "request_id": request_id},
+                    headers={"X-Request-ID": request_id},
+                )
+        except ValueError:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid Content-Length header.", "request_id": request_id},
+                headers={"X-Request-ID": request_id},
+            )
+
+    client_key = client_host or "unknown"
+    allowed, retry_after = RATE_LIMITER.allow(
+        client_key, "general", limit=REQUESTS_PER_MINUTE, window_seconds=60,
+    )
+    if allowed and request.url.path in HEAVY_ENDPOINTS | {"/jobs/dub-transcribe", "/jobs/dub-render"}:
+        allowed, retry_after = RATE_LIMITER.allow(
+            client_key, "heavy", limit=HEAVY_REQUESTS_PER_MINUTE, window_seconds=60,
+        )
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Audiolab request limit reached. Wait before retrying.", "request_id": request_id},
+            headers={"Retry-After": str(retry_after), "X-Request-ID": request_id},
+        )
+
+    acquire_slot = request.url.path in HEAVY_ENDPOINTS
+    if acquire_slot and not HEAVY_REQUESTS.acquire(blocking=False):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "A heavy audio task is already running. Use the queued dubbing endpoints or retry shortly.", "request_id": request_id},
+            headers={"Retry-After": "5", "X-Request-ID": request_id},
+        )
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        if acquire_slot:
+            HEAVY_REQUESTS.release()
 
 
 @app.on_event("startup")
@@ -155,12 +242,21 @@ def health():
     return {
         "status": "ok",
         "product": "Audiolab AI Audio Studio",
-        "version": "2.7.0",
+        "version": "2.8.0",
         "limits": {
             "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
             "max_text_characters": MAX_TEXT_LENGTH,
-            "max_concurrent_model_loads": 1,
+            "requests_per_minute": REQUESTS_PER_MINUTE,
+            "heavy_requests_per_minute": HEAVY_REQUESTS_PER_MINUTE,
+            "max_concurrent_heavy_requests": MAX_CONCURRENT_HEAVY_REQUESTS,
         },
+        "deployment": {
+            "remote_access": "api_key_required" if AUDIOLAB_API_KEY else "loopback_only",
+            "api_key_configured": bool(AUDIOLAB_API_KEY),
+            "public_health_probe": True,
+            "frontend_secret_policy": "Never put AUDIOLAB_API_KEY in browser JavaScript.",
+        },
+        "job_queue": JOB_QUEUE.stats(),
         "api_docs": "/docs",
         "model": "IndicF5",
         "device": engine.device if engine is not None else "not_loaded",
@@ -422,6 +518,170 @@ def dubbing_assist_endpoint(
 def cleanup_dub_project(archive_path: Path, work_dir: Path):
     archive_path.unlink(missing_ok=True)
     shutil.rmtree(work_dir, ignore_errors=True)
+
+
+def _queued_dub_transcription(source_path: str, source_language: str):
+    """Run local Whisper in the background worker and always clean its input."""
+    source = Path(source_path)
+    try:
+        try:
+            result = transcribe_speech(source, source_language or None)
+        except SpeechToTextUnavailable as exc:
+            raise RuntimeError(str(exc)) from exc
+        except ValueError as exc:
+            raise RuntimeError(str(exc)) from exc
+        segments = result.get("segments") or []
+        if not segments:
+            raise RuntimeError("No timestamped speech segments were returned.")
+        if len(segments) > 120:
+            raise RuntimeError("This recording produced more than 120 segments. Use a shorter clip.")
+        return {
+            "language": result.get("language") or "unknown",
+            "duration": result.get("duration", 0),
+            "text": result.get("text", ""),
+            "segments": [
+                {
+                    "start": round(float(row["start"]), 3),
+                    "end": round(float(row["end"]), 3),
+                    "source_text": str(row.get("text") or ""),
+                    "translated_text": "",
+                }
+                for row in segments
+            ],
+            "provider": "local faster-whisper",
+            "note": "Review every transcription and enter the translated text. Translation is not automatic.",
+        }
+    finally:
+        source.unlink(missing_ok=True)
+
+
+def _queued_dub_render(target_path: str, target_filename: str, segments_json: str, target_language: str, ref_text: str):
+    """Run the existing renderer off-request-thread and retain its ZIP until download."""
+    import asyncio
+    from pathlib import Path
+
+    source = Path(target_path)
+    try:
+        with source.open("rb") as handle:
+            upload = UploadFile(file=handle, filename=target_filename or "target-reference.wav")
+            response = dub_render_endpoint(
+                target_file=upload,
+                segments_json=segments_json,
+                target_language=target_language,
+                ref_text=ref_text,
+                consent=True,
+            )
+        if not isinstance(response, FileResponse):
+            raise RuntimeError("Dubbing renderer did not return an archive.")
+        archive = Path(response.path)
+        retained = make_output("job-result", ".zip")
+        shutil.copy2(archive, retained)
+        background = getattr(response, "background", None)
+        if background is not None:
+            # The route's existing cleanup callback is synchronous and owns only
+            # the temporary archive/work directory, not the retained job artifact.
+            callback = getattr(background, "func", None)
+            if callback:
+                callback(*getattr(background, "args", ()), **getattr(background, "kwargs", {}))
+            else:
+                asyncio.run(background())
+        return {"artifact_path": str(retained), "filename": "audiolab-dubbing-project.zip"}
+    finally:
+        source.unlink(missing_ok=True)
+
+
+@app.post("/jobs/dub-transcribe", status_code=202)
+def enqueue_dub_transcription(
+    source_file: UploadFile = File(...),
+    source_language: str = Form(""),
+):
+    """Queue long-running transcription and return a pollable job ID."""
+    source = save_upload(source_file)
+    try:
+        job_id = JOB_QUEUE.submit("dub-transcribe", _queued_dub_transcription, str(source), source_language)
+    except QueueFullError as exc:
+        source.unlink(missing_ok=True)
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except Exception:
+        source.unlink(missing_ok=True)
+        raise
+    return {"job_id": job_id, "status": "queued", "status_url": f"/jobs/{job_id}"}
+
+
+@app.post("/jobs/dub-render", status_code=202)
+def enqueue_dub_render(
+    target_file: UploadFile = File(...),
+    segments_json: str = Form(...),
+    target_language: str = Form(...),
+    ref_text: str = Form(...),
+    consent: bool = Form(False),
+):
+    """Queue timed dubbing and retain its ZIP until the client downloads it."""
+    if not consent:
+        raise HTTPException(status_code=400, detail="Confirm you have permission to use the target voice reference.")
+    validate_text(ref_text, "Target voice reference transcript")
+    if target_language not in LANGS:
+        raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_language}")
+    try:
+        parsed = json.loads(segments_json)
+        validate_dub_segments(parsed)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    target = save_upload(target_file)
+    try:
+        job_id = JOB_QUEUE.submit(
+            "dub-render", _queued_dub_render, str(target), target_file.filename or "target-reference.wav",
+            segments_json, target_language, ref_text,
+        )
+    except QueueFullError as exc:
+        target.unlink(missing_ok=True)
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except Exception:
+        target.unlink(missing_ok=True)
+        raise
+    return {"job_id": job_id, "status": "queued", "status_url": f"/jobs/{job_id}"}
+
+
+@app.get("/jobs/{job_id}")
+def get_audio_job(job_id: str):
+    """Poll a queued audio job without exposing local filesystem paths."""
+    job = JOB_QUEUE.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Audio job not found or expired after a backend restart.")
+    result = job.get("result")
+    if job["status"] == "succeeded" and job["kind"] == "dub-render":
+        result = {"download_url": f"/jobs/{job_id}/download", "filename": "audiolab-dubbing-project.zip"}
+    return {
+        "job_id": job["job_id"],
+        "kind": job["kind"],
+        "status": job["status"],
+        "created_at": job["created_at"],
+        "started_at": job["started_at"],
+        "finished_at": job["finished_at"],
+        "result": result,
+        "error": job["error"],
+    }
+
+
+@app.get("/jobs/{job_id}/download")
+def download_audio_job(job_id: str):
+    job = JOB_QUEUE.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Audio job not found or expired after a backend restart.")
+    if job["kind"] != "dub-render":
+        raise HTTPException(status_code=400, detail="This job does not produce a downloadable archive.")
+    if job["status"] != "succeeded" or not job.get("result"):
+        raise HTTPException(status_code=409, detail="The dubbing job has not completed successfully.")
+    artifact = Path(job["result"].get("artifact_path", ""))
+    if not artifact.is_file():
+        raise HTTPException(status_code=410, detail="The job archive is no longer available; submit the job again.")
+    return FileResponse(
+        artifact,
+        media_type="application/zip",
+        filename="audiolab-dubbing-project.zip",
+        background=BackgroundTask(artifact.unlink, missing_ok=True),
+    )
 
 
 @app.post("/dub-transcribe")
