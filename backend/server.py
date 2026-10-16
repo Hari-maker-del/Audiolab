@@ -108,7 +108,13 @@ def health():
         "product": "Audiolab AI Audio Studio",
         "version": "2.2.0",
         "model": "IndicF5",
-        "device": get_engine().device if engine is not None else "not_loaded",
+        "device": engine.device if engine is not None else "not_loaded",
+        "inference": {
+            "state": "loaded" if engine is not None else "not_loaded",
+            "loaded": engine is not None,
+            "model_id": "ai4bharat/IndicF5",
+            "note": "The model loads on the first generation request. A healthy API does not mean the model weights have already loaded."
+        },
         "languages": list(LANGS.keys()),
         "voice_conversion": get_voice_conversion_status(),
         "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion"],
@@ -321,6 +327,7 @@ def generate_endpoint(
     source = save_upload(file)
     cleaned = REF / f"request-reference-{uuid.uuid4().hex}.wav"
     output = make_output("generated")
+    response_ready = False
     try:
         try:
             clean(str(source), cleaned)
@@ -331,11 +338,13 @@ def generate_endpoint(
             raise
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Voice generation failed: {exc}") from exc
-        return result_file(Path(result))
+        response = result_file(Path(result))
+        response_ready = True
+        return response
     finally:
         source.unlink(missing_ok=True)
         cleaned.unlink(missing_ok=True)
-        if not output.exists():
+        if not response_ready:
             output.unlink(missing_ok=True)
 
 
@@ -343,6 +352,6 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         app,
-        host=os.getenv("AUDIOLAB_HOST", "0.0.0.0"),
+        host=os.getenv("AUDIOLAB_HOST", "127.0.0.1"),
         port=int(os.getenv("PORT", "8000")),
     )
