@@ -23,6 +23,14 @@ Audiolab is a Tamil-first, Indian-language voice generation studio built around 
 - CUDA PyTorch setup for supported NVIDIA GPUs
 - One-click Windows local launcher
 
+## Web entry points
+
+- `frontend/index.html`: public 3D marketing landing page.
+- `frontend/studio.html`: Audiolab's existing audio workspace.
+- `frontend/landing.html`: standalone landing-page preview/alias.
+
+The landing page uses a dependency-free, interactive Canvas-based 3D-style audio sphere and responsive CSS depth effects. The landing page is static; AI conversion still requires the configured local backend and model files.
+
 ## Architecture
 
 ```text
