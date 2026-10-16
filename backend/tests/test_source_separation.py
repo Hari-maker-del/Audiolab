@@ -17,7 +17,7 @@ def test_status_reports_optional_model_without_loading_it():
 
     assert status["id"] == "demucs-htdemucs"
     assert status["task"] == "vocal-instrumental-separation"
-    assert status["state"] in {"ready_to_download_weights", "dependencies_missing"}
+    assert status["state"] in {"installed_not_loaded", "dependencies_missing"}
     assert isinstance(status["package_installed"], bool)
 
 
