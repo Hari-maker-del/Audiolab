@@ -29,6 +29,8 @@ jobs:
       - name: Check Voice Convert integration and editor bridge
         run: |
           node --check frontend/voice-convert.js
+          node --check frontend/voice-persistence.js
+          node --check frontend/hf-client.js
           node --check frontend/studio-fix.js
           node --check frontend/app-fixed.js
           node --check frontend/landing-3d.js
