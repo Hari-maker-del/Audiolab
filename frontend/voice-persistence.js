@@ -56,6 +56,7 @@
       name: String(profile.name || "My voice").trim().slice(0, 80) || "My voice",
       language: String(profile.language || "Tamil"),
       duration: String(profile.duration || "Reference audio"),
+      transcript: String(profile.transcript || ""),
       fileName: String(profile.file.name || "voice-reference.wav"),
       type: String(profile.file.type || "audio/wav"),
       size: Number(profile.file.size || 0),
@@ -115,6 +116,28 @@
     return { id: row.id, name: row.name, language: row.language, duration: row.duration, fileName: row.fileName, type: row.type, size: row.size, createdAt: row.createdAt };
   }
 
+  async function updateProfile(id, updates) {
+    const row = await getProfile(id);
+    if (!row) throw new Error("Voice profile not found.");
+    if (updates.name !== undefined) {
+      row.name = String(updates.name || "").trim().slice(0, 80);
+      if (!row.name) throw new Error("Voice profile name cannot be empty.");
+    }
+    if (updates.transcript !== undefined) row.transcript = String(updates.transcript || "").slice(0, 10000);
+    if (updates.language !== undefined) row.language = String(updates.language || "Tamil");
+    const db = await openDB();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(PROFILE_STORE, "readwrite");
+        tx.objectStore(PROFILE_STORE).put(row);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error("Could not update voice profile"));
+      });
+    } finally { db.close(); }
+    const { blob, ...meta } = row;
+    return meta;
+  }
+
   async function deleteProfile(id) {
     const db = await openDB();
     try {
@@ -127,7 +150,7 @@
     } finally { db.close(); }
   }
 
-  window.audiolabVoiceProfiles = { save: saveProfile, list: listProfiles, get: getProfile, rename: renameProfile, delete: deleteProfile };
+  window.audiolabVoiceProfiles = { save: saveProfile, list: listProfiles, get: getProfile, rename: renameProfile, update: updateProfile, delete: deleteProfile };
 
   async function restoreReference() {
     if (restoring || window.__audiolabVoiceHydrated) return false;
