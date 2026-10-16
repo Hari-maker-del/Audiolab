@@ -1,4 +1,151 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17130f"><title>Audiolab — AI Audio Studio</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/studio-upgrade.css"><link rel="stylesheet" href="/pro-editor.css"><link rel="stylesheet" href="/voice-convert.css"></head>
-<body><div id="app"><aside class="sidebar"><div><a class="brand" href="#studio"><span class="brand-mark">≈</span><span>Audiolab</span></a><nav><button data-page="studio" class="nav-item active">⌂ <span>Studio</span></button><button data-page="voices" class="nav-item">◉ <span>Voices</span></button><button data-page="generate" class="nav-item">✦ <span>Generate</span></button><button data-page="history" class="nav-item">◷ <span>History</span></button><button data-page="tools" class="nav-item">⌁ <span>Audio Studio</span></button><button data-page="models" class="nav-item">◇ <span>Models</span></button><button data-page="settings" class="nav-item">⚙ <span>Settings</span></button></nav></div><div class="side-status"><div><span class="dot"></span><span id="modelStatus">IndicF5 Ready to connect</span></div><div><span class="dot muted"></span><span id="deviceStatus">AI client idle</span></div><small>Audiolab V8 · Phase 1</small></div></aside><main class="main"><header class="topbar"><div class="mobile-brand"><span class="brand-mark">≈</span> Audiolab</div><div class="top-actions"><span class="privacy-pill">Authorized voice use</span><button class="icon-btn" id="menuBtn">☰</button></div></header><section id="page-studio" class="page active"></section><section id="page-voices" class="page"></section><section id="page-generate" class="page"></section><section id="page-history" class="page"></section><section id="page-tools" class="page"><div id="proEditor"></div></section><section id="page-models" class="page"></section><section id="page-settings" class="page"></section></main></div><div id="toast" class="toast"></div><script type="module" src="/hf-client.js"></script><script src="/local-config.js"></script><script src="/app-fixed.js"></script><script src="/studio-fix.js"></script><script src="/runtime-fix.js"></script><script src="/voice-persistence.js"></script><script src="/voice-convert.js"></script></body></html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#17130f">
+  <meta name="description" content="Audiolab is a local-first audio workspace for expressive voice performances, voice workflows, and audio editing.">
+  <title>Audiolab — Keep the performance. Transform the voice.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./landing-3d.css">
+</head>
+<body class="audiolab-landing">
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <header class="landing-nav">
+    <a class="landing-brand" href="./index.html" aria-label="Audiolab home">
+      <span class="brand-icon" aria-hidden="true"><span>≈</span></span>
+      <span>AUDIO<span class="brand-thin">LAB</span></span>
+    </a>
+    <nav class="nav-links" id="navLinks" aria-label="Main navigation">
+      <a href="#experience">Experience</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#local-first">Local first</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="nav-login" href="./studio.html">Open studio <span aria-hidden="true">↗</span></a>
+      <button class="nav-menu" id="navMenu" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Toggle navigation"><span></span><span></span></button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero-section">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-dot"></span> THE CREATIVE AUDIO WORKSPACE</div>
+        <h1>Keep the<br><span class="headline-outline">performance.</span><br><span class="headline-accent">Transform the voice.</span></h1>
+        <p class="hero-description">Your delivery has a feeling. Audiolab gives you a place to record it, shape the sound, and explore new vocal identities—without losing sight of the performance that started it all.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="./studio.html">Enter Audiolab <span aria-hidden="true">↗</span></a>
+          <a class="button button-quiet" href="#experience"><span class="play-mark" aria-hidden="true">↓</span> Explore the workspace</a>
+        </div>
+        <div class="hero-proof">
+          <div class="proof-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 19 6v5.5c0 4.6-3 7.4-7 9-4-1.6-7-4.4-7-9V6l7-2.5Z" stroke="currentColor" stroke-width="1.5"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><strong>Built for creators</strong><span>Local-first by design · You stay in control</span></div>
+        </div>
+      </div>
+
+      <div class="hero-art" id="heroArt">
+        <div class="art-topline"><span><i></i> AUDIO OBJECT / 001</span><span>INTERACTIVE 3D</span></div>
+        <div class="orb-scene">
+          <div class="scene-grid" aria-hidden="true"></div>
+          <div class="orb-glow" aria-hidden="true"></div>
+          <canvas id="soundOrb" aria-label="Interactive 3D-inspired audio sphere" role="img"></canvas>
+          <div class="orbit-label orbit-label-top"><span class="label-line"></span><span>VOICE<br>IDENTITY</span></div>
+          <div class="orbit-label orbit-label-bottom"><span class="label-line"></span><span>EXPRESSIVE<br>PERFORMANCE</span></div>
+          <div class="floating-chip chip-a"><span class="chip-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><b>Voice</b><small>shape the sound</small></span></div>
+          <div class="floating-chip chip-b"><span class="chip-orbit" aria-hidden="true">◉</span><span><b>Audio Lab</b><small>your creative space</small></span></div>
+          <div class="scene-index" aria-hidden="true">A—01<br><span>VOICE / FORM</span></div>
+        </div>
+        <div class="art-footer"><span>01 <b>—</b> LISTEN DIFFERENTLY</span><span class="art-footer-right">MOVE YOUR CURSOR <span aria-hidden="true">↗</span></span></div>
+      </div>
+      <div class="scroll-cue" aria-hidden="true"><span></span> SCROLL TO EXPLORE</div>
+    </section>
+
+    <section class="intro-strip" id="experience">
+      <div class="strip-kicker">AUDIO, WITH INTENTION</div>
+      <p>From your first take to your final export, make every sound feel <span>deliberate.</span></p>
+      <div class="strip-number">01 / 03</div>
+    </section>
+
+    <section class="feature-section section-wrap">
+      <div class="section-heading">
+        <div><div class="eyebrow">THE WORKSPACE</div><h2>More than a voice.<br><span>A whole performance.</span></h2></div>
+        <p>A focused set of tools for the moments that matter—from the first recording to the final playback.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card feature-card-large tilt-card">
+          <div class="feature-index">01 / CAPTURE</div>
+          <div class="feature-illustration capture-visual" aria-hidden="true">
+            <div class="capture-ring ring-one"></div><div class="capture-ring ring-two"></div><div class="capture-center">REC<span></span></div>
+            <div class="capture-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="feature-copy"><h3>Start with your real voice.</h3><p>Record or import the performance you actually delivered. Keep the take, the pace, and the feeling in the driver's seat.</p><a href="./studio.html" class="text-link">Start a session <span aria-hidden="true">↗</span></a></div>
+        </article>
+        <article class="feature-card tilt-card">
+          <div class="feature-index">02 / TRANSFORM</div>
+          <div class="feature-illustration transform-visual" aria-hidden="true">
+            <div class="transform-panel panel-back"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="transform-arrow">↗</div>
+            <div class="transform-panel panel-front"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+          <div class="feature-copy"><h3>Explore a new vocal colour.</h3><p>Try a voice-conversion workflow with a separate target reference when the local model is configured and ready.</p><a href="./studio.html" class="text-link">Explore voice tools <span aria-hidden="true">↗</span></a></div>
+        </article>
+        <article class="feature-card tilt-card">
+          <div class="feature-index">03 / SHAPE</div>
+          <div class="feature-illustration editor-visual" aria-hidden="true">
+            <div class="editor-top"><span></span><span></span><span></span><b>TAKE_001.WAV</b></div>
+            <div class="editor-timeline"><div class="editor-time">00:03</div><div class="editor-wave wave-one"></div><div class="editor-wave wave-two"></div><div class="playhead"></div></div>
+            <div class="editor-controls"><span>◁</span><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>▷</span></div>
+          </div>
+          <div class="feature-copy"><h3>Make the details land.</h3><p>Use the audio editor to review, trim, process, and export your recordings in one focused space.</p><a href="./studio.html" class="text-link">Open audio editor <span aria-hidden="true">↗</span></a></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="workflow-section" id="workflow">
+      <div class="section-wrap workflow-inner">
+        <div class="workflow-copy">
+          <div class="eyebrow">A SIMPLE CREATIVE LOOP</div>
+          <h2>From raw take<br>to <span>your sound.</span></h2>
+          <p>Keep the workflow direct. Bring in your performance, choose what you want to do, and review the result before you export anything.</p>
+          <a class="button button-primary" href="./studio.html">Make something <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="workflow-steps">
+          <div class="workflow-step"><div class="step-no">01</div><div><h3>Bring your audio</h3><p>Record your voice or import a take from your device.</p></div><span class="step-symbol">↘</span></div>
+          <div class="workflow-step"><div class="step-no">02</div><div><h3>Choose your path</h3><p>Edit the take, generate speech, or convert a voice when the selected model supports it.</p></div><span class="step-symbol">↗</span></div>
+          <div class="workflow-step"><div class="step-no">03</div><div><h3>Listen. Refine. Export.</h3><p>Review the output and keep the version that feels right.</p></div><span class="step-symbol">↗</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="local-section section-wrap" id="local-first">
+      <div class="local-visual" aria-hidden="true">
+        <div class="local-cube"><span class="cube-face cube-front">YOUR<br>TAKE</span><span class="cube-face cube-side"></span><span class="cube-face cube-top"></span></div>
+        <div class="local-orbit orbit-x"></div><div class="local-orbit orbit-y"></div>
+        <div class="local-dots"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="local-copy"><div class="eyebrow">LOCAL-FIRST PHILOSOPHY</div><h2>Your files.<br><span>Your workflow.</span></h2><p>Audiolab's browser editing is designed to stay on your device. AI conversion requires the appropriate model and local backend to be installed; this landing page never pretends otherwise.</p><div class="local-points"><div><span>✓</span> Clear model status</div><div><span>✓</span> Local voice-reference storage</div><div><span>✓</span> No paid inference required for the default local setup</div></div><a class="text-link" href="./studio.html">Go to the Audiolab workspace <span aria-hidden="true">↗</span></a></div>
+    </section>
+
+    <section class="closing-section">
+      <div class="closing-orb" aria-hidden="true"></div>
+      <div class="eyebrow">YOUR NEXT TAKE STARTS HERE</div>
+      <h2>Make your voice<br><span>feel like yours.</span></h2>
+      <p>Open the studio. Bring a performance. Find the sound you were hearing in your head.</p>
+      <a class="button button-primary" href="./studio.html">Enter Audiolab <span aria-hidden="true">↗</span></a>
+    </section>
+  </main>
+
+  <footer class="landing-footer">
+    <a class="landing-brand" href="./index.html"><span class="brand-icon" aria-hidden="true"><span>≈</span></span><span>AUDIO<span class="brand-thin">LAB</span></span></a>
+    <span>MADE FOR THE WAY YOU SOUND.</span>
+    <a href="./studio.html">Open studio <span aria-hidden="true">↗</span></a>
+    <small>© <span id="year"></span> Audiolab. Use voice references only with permission.</small>
+  </footer>
+
+  <script src="./landing-3d.js"></script>
+</body>
+</html>
