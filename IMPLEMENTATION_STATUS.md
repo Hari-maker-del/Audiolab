@@ -43,6 +43,30 @@ This file distinguishes source-code integration from successful runtime verifica
 - Run a real IndicF5 generation test for each target language before describing that language as quality-verified.
 - CI syntax checks and source integration do not establish speech recognition accuracy or model inference success.
 
+## Phase 6 AI music generation (2026-10-16)
+
+### Implemented in source
+- Added `backend/ai_music.py`, an optional lazy-loaded MusicGen Small text-to-music integration using local Transformers/PyTorch inference.
+- Added `backend/requirements-music.txt` for the optional EnCodec dependency.
+- Added `POST /music-generate` to create a WAV from a prompt and duration, with request validation, one-generation-at-a-time locking, error handling, and output cleanup.
+- Added MusicGen dependency/model state to `GET /health` and `GET /models` without triggering model downloads.
+- Added a Text to music card in the Studio Tools page; the existing procedural music sketch remains separately labelled.
+- Added automated tests for model-status shape and prompt/duration validation without loading model weights.
+- Added setup instructions, model resource notes, and the upstream license warning to README.
+
+### Important licensing and resource constraints
+- Upstream model: `facebook/musicgen-small`; model weights are licensed CC-BY-NC 4.0. This should be treated as non-commercial research/prototyping unless suitable separate rights are obtained. Do not assume commercial product use is cleared.
+- First use downloads roughly 1 GB of model files plus cache. CPU generation may be slow; CUDA is selected when supported.
+- The current endpoint limits prompts to 500 characters and duration to 5–15 seconds and serializes generation to reduce memory pressure.
+- Local inference avoids a paid hosted inference API, but requires disk space, internet for first download, and suitable RAM/VRAM.
+
+### Runtime verification still required
+- Install `backend/requirements-music.txt` into the existing virtual environment.
+- Restart the Windows launcher; confirm `/health` and `/models` report MusicGen dependencies correctly.
+- Generate a 5–8 second clip from a simple prompt, verify the WAV plays and downloads, and listen for quality.
+- Test missing dependencies, first-run download errors, CPU-only performance, and a second concurrent request.
+- CI does not download model weights and does not establish end-to-end model inference.
+
 ## Phase 5 AI vocal isolation (2026-10-16)
 
 ### Implemented in source
