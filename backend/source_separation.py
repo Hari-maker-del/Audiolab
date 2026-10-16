@@ -31,7 +31,7 @@ def separation_status() -> dict:
         "id": "demucs-htdemucs",
         "name": "Demucs (HTDemucs)",
         "task": "vocal-instrumental-separation",
-        "state": "ready_to_download_weights" if installed else "dependencies_missing",
+        "state": "installed_not_loaded" if installed else "dependencies_missing",
         "package_installed": installed,
         "model": MODEL_NAME,
         "device": "auto (CUDA when available, otherwise CPU)",
