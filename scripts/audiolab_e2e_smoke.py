@@ -145,7 +145,7 @@ def _assert_history_contains(base_url: str, job_id: str, api_key: str | None) ->
 
 def run_smoke(*, base_url: str = "http://127.0.0.1:8000", timeout: float = 1800,
               transcribe_audio: str | None = None, render_manifest: str | None = None,
-              output_dir: str = "audiolab-e2e-results", api_key: str | None = None,
+              confirm_voice_rights: bool = False, output_dir: str = "audiolab-e2e-results", api_key: str | None = None,
               on_message: Callable[[str], None] = print) -> dict:
     base_url = validate_base_url(base_url)
     if timeout <= 0:
@@ -180,6 +180,8 @@ def run_smoke(*, base_url: str = "http://127.0.0.1:8000", timeout: float = 1800,
         summary["jobs"].append({"job_id": job_id, "kind": "dub-transcribe", "status": job["status"], "segments": len(result["segments"])})
 
     if render_manifest:
+        if not confirm_voice_rights:
+            raise SmokeTestError("Before a real render, pass --confirm-voice-rights only if you have permission to use the target voice recording.")
         manifest_path = Path(render_manifest).expanduser().resolve()
         if not manifest_path.is_file():
             raise SmokeTestError(f"Render manifest not found: {manifest_path}")
@@ -233,13 +235,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=1800, help="Maximum wait for each actual model job, in seconds.")
     parser.add_argument("--transcribe-audio", help="Audio file to submit to the local speech-to-text job endpoint.")
     parser.add_argument("--render-manifest", help="JSON manifest describing a real dubbing render (see docs/PHASE13_E2E.md).")
+    parser.add_argument("--confirm-voice-rights", action="store_true", help="Confirm you have permission to use the target voice recording for this render.")
     parser.add_argument("--output-dir", default="audiolab-e2e-results")
     parser.add_argument("--api-key", default=os.getenv("AUDIOLAB_API_KEY") or None, help="Optional local backend API key; defaults to AUDIOLAB_API_KEY.")
     args = parser.parse_args(argv)
     try:
         summary = run_smoke(base_url=args.base_url, timeout=args.timeout,
                             transcribe_audio=args.transcribe_audio, render_manifest=args.render_manifest,
-                            output_dir=args.output_dir, api_key=args.api_key)
+                            confirm_voice_rights=args.confirm_voice_rights, output_dir=args.output_dir, api_key=args.api_key)
     except SmokeTestError as exc:
         print(f"FAIL: {exc}")
         return 1
