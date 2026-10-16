@@ -19,6 +19,26 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def public_job_view(job: dict) -> dict:
+    """Return a stable API-safe job representation without local artifact paths."""
+    result = job.get("result")
+    if job.get("status") == "succeeded" and job.get("kind") == "dub-render":
+        result = {
+            "download_url": f"/jobs/{job['job_id']}/download",
+            "filename": "audiolab-dubbing-project.zip",
+        }
+    return {
+        "job_id": job["job_id"],
+        "kind": job["kind"],
+        "status": job["status"],
+        "created_at": job["created_at"],
+        "started_at": job.get("started_at"),
+        "finished_at": job.get("finished_at"),
+        "result": result,
+        "error": job.get("error"),
+    }
+
+
 class BoundedJobQueue:
     def __init__(
         self,

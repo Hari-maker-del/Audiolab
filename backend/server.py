@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.background import BackgroundTask
 
 from deployment import SlidingWindowRateLimiter, authorize_request
-from job_queue import BoundedJobQueue, QueueFullError
+from job_queue import BoundedJobQueue, QueueFullError, public_job_view
 from job_store import PersistentJobStore
 
 from audio import analyze, clean
@@ -658,25 +658,7 @@ def list_audio_jobs(limit: int = 50, status: str = ""):
         raise HTTPException(status_code=400, detail=f"Unsupported job status: {status}")
     safe_limit = min(100, max(1, limit))
     jobs = JOB_QUEUE.list_jobs(limit=safe_limit, status=status or None)
-    items = []
-    for job in jobs:
-        result = job.get("result")
-        # Never expose server filesystem paths in the public job-history API.
-        if job["status"] == "succeeded" and job["kind"] == "dub-render":
-            result = {
-                "download_url": f"/jobs/{job['job_id']}/download",
-                "filename": "audiolab-dubbing-project.zip",
-            }
-        items.append({
-            "job_id": job["job_id"],
-            "kind": job["kind"],
-            "status": job["status"],
-            "created_at": job["created_at"],
-            "started_at": job["started_at"],
-            "finished_at": job["finished_at"],
-            "result": result,
-            "error": job["error"],
-        })
+    items = [public_job_view(job) for job in jobs]
     return {"jobs": items, "count": len(items), "limit": safe_limit, "status_filter": status or None}
 
 
@@ -686,19 +668,7 @@ def get_audio_job(job_id: str):
     job = JOB_QUEUE.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Audio job not found or expired after a backend restart.")
-    result = job.get("result")
-    if job["status"] == "succeeded" and job["kind"] == "dub-render":
-        result = {"download_url": f"/jobs/{job_id}/download", "filename": "audiolab-dubbing-project.zip"}
-    return {
-        "job_id": job["job_id"],
-        "kind": job["kind"],
-        "status": job["status"],
-        "created_at": job["created_at"],
-        "started_at": job["started_at"],
-        "finished_at": job["finished_at"],
-        "result": result,
-        "error": job["error"],
-    }
+    return public_job_view(job)
 
 
 @app.get("/jobs/{job_id}/download")
