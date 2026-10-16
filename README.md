@@ -379,3 +379,13 @@ Phase 10 builds on the Phase 9 job queue by storing job records in a local SQLit
 - `GET /health` reports whether SQLite history is enabled and clarifies that job history persists while in-flight work does not resume.
 
 This is durable **job metadata**, not a distributed queue or durable artifact store. Keep the backend local unless you have implemented the Phase 9 server-side gateway and security controls. Tests cover restart recovery, completed-result persistence, status filtering, and retention pruning; model inference still needs a real local runtime test.
+
+
+## Phase 11 — Job history workspace and safer API responses
+
+The studio History page now brings together two distinct sources: browser-local generated-audio entries and persistent local-backend dubbing jobs. Backend history can be refreshed and filtered by queued, running, succeeded, or failed status. Failed jobs show their recorded error; completed dubbing exports provide a download link.
+
+- The backend queue and single-job endpoints share a response serializer so a completed render exposes a download URL, not its local filesystem path.
+- UI connection failures are shown explicitly with a retry action; the page does not fabricate job records when the local backend is unavailable.
+- Automated tests cover public render-path redaction, transcription result visibility, and failed-job error display.
+- The static-check workflow checks the edited frontend JavaScript syntax and runs the backend tests. Real model inference remains a separate runtime verification step.
