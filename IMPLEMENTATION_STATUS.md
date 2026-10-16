@@ -43,6 +43,30 @@ This file distinguishes source-code integration from successful runtime verifica
 - Run a real IndicF5 generation test for each target language before describing that language as quality-verified.
 - CI syntax checks and source integration do not establish speech recognition accuracy or model inference success.
 
+## Phase 5 AI vocal isolation (2026-10-16)
+
+### Implemented in source
+- Added optional local Demucs HTDemucs integration in `backend/source_separation.py`; it runs the installed model using the active Python environment and selects CUDA when available, otherwise CPU.
+- Added `backend/requirements-separation.txt` as an optional dependency group, keeping the core TTS install lean.
+- Added `POST /separate`: accepts audio, runs local source separation, packages actual `vocals.wav` and `instrumental.wav` files into a ZIP, and cleans temporary artifacts after response delivery or failure.
+- Added model/package state to `GET /health` and `GET /models` without triggering model downloads.
+- Added the Vocal Isolation card to the Studio Tools page, including file selection, rights confirmation, progress/error messaging, and ZIP download.
+- Added tests for optional dependency status and output-stem discovery/validation.
+- Added setup and limitations to README.
+
+### Scope and limits
+- This uses the open-source Demucs model, not the existing spectral noise-reduction filter.
+- Demucs weights download on first use; network access is needed for that initial download. CPU inference can be slow.
+- Separation quality depends on the input. Vocal/instrumental tracks can contain artifacts or bleed.
+- The API returns a ZIP containing two WAVs rather than playing both stems inline in the browser.
+- The CI tests do not install Demucs or download model weights, so they do not prove end-to-end separation quality.
+
+### Runtime verification still required
+- Install `backend/requirements-separation.txt` in the existing virtual environment.
+- Restart the Windows launcher and confirm `/health` and `/models` report Demucs as installed.
+- Process a short authorized music clip; unzip the result and listen to both WAVs.
+- Test an invalid/non-audio file, timeout handling, and a long recording. Confirm temporary output files are removed after both success and failure.
+
 ## Phase 4 production-readiness updates (2026-10-16)
 
 ### Implemented in source
