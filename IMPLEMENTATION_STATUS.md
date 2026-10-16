@@ -242,3 +242,12 @@ This file distinguishes source-code integration from successful runtime verifica
 - No end-to-end audio inference was executed from this editing session.
 - No model checkpoint weights were committed.
 - A direct local clone/test attempt was blocked by the current environment's inability to resolve `github.com`; automated verification was performed by GitHub Actions.
+
+
+## Phase 13 — Local end-to-end smoke testing (2026-10-16)
+
+- Added `scripts/audiolab_e2e_smoke.py` to check backend health and job history, optionally submit real local transcription and dubbing-render jobs, poll terminal status, confirm history persistence, download the render ZIP, and verify its CRCs and required non-empty files.
+- The smoke client permits only loopback HTTP URLs and requires an explicit `--confirm-voice-rights` flag before submitting a render.
+- Added automated loopback HTTP fixture tests for the submit → poll → history → download workflow, bad health responses, remote-host rejection, archive integrity, and render-consent gating.
+- Instructions: [docs/PHASE13_E2E.md](docs/PHASE13_E2E.md).
+- Verification boundary: CI fixture uses synthetic test payloads and does not load IndicF5 or faster-whisper models. Real model inference still must be run on the user's local Windows machine with audio files; this update does not claim such a run occurred.
