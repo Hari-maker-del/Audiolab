@@ -310,21 +310,6 @@ Restart `START-AUDIOLAB.bat`, open Studio → **Audio Studio / Tools** → **Tex
 
 The CI tests check request validation and status reporting without downloading model weights. They do not prove successful inference or generated-audio quality on your machine.
 
-## Phase 8 — Sentence-timed dubbing and subtitles
-
-Studio → Tools → **Sentence-timed dubbing studio** provides a local dubbing-project workflow:
-
-1. Upload the source recording and transcribe it with optional local faster-whisper. The API returns editable source segments and timestamps.
-2. Review the transcript, adjust each segment's start/end time if needed, and enter the reviewed translation for every segment.
-3. Provide an authorized target voice reference and its exact transcript, then render with local IndicF5.
-4. Download a ZIP containing `dubbed_voice.wav`, `subtitles.srt`, and `segments.json`. The JSON includes a per-segment fit report.
-
-- API: `POST /dub-transcribe` creates timestamped source segments; `POST /dub-render` generates the timed track and exports SRT.
-- This phase does not automatically translate text. Human review is required for every translated segment.
-- Alignment uses speech-recognition timestamps. If a generated line is longer than its time slot, Audiolab may time-stretch it or trim it; pronunciation, pacing, and timing need listening review.
-- The exported WAV is a dubbed voice track only. It does not include the original background audio, and it is not lip-sync.
-- Model inference remains local and requires the optional faster-whisper setup plus a working IndicF5 environment. Runtime audio quality must be verified on the target machine.
-
 ## Phase 7 — Conversational voice agent
 
 Audiolab now includes a local-first conversation endpoint at `POST /voice-agent` and a **Talk to Audiolab** card in Studio → Audio Studio / Tools.
@@ -350,3 +335,19 @@ Optional speech-recognition setup, if it is not already installed:
 - The client can retain its own conversation state, but this endpoint does not save conversation history server-side. Current release is request/response, not a continuous streaming voice call.
 - Requests without a voice reference return a text reply as JSON. Requests with a permitted reference can return a generated WAV reply.
 - Tests cover intent routing and response behavior without downloading speech or TTS model weights. Runtime voice interaction must still be verified on your computer.
+
+## Phase 8 — Sentence-timed dubbing and subtitles
+
+Studio → Tools → **Sentence-timed dubbing studio** provides a local dubbing-project workflow:
+
+1. Upload the source recording and transcribe it with optional local faster-whisper. The API returns editable source segments and timestamps.
+2. Review the transcript, adjust each segment's start/end time if needed, and enter the reviewed translation for every segment.
+3. Provide an authorized target voice reference and its exact transcript, then render with local IndicF5.
+4. Download a ZIP containing `dubbed_voice.wav`, `subtitles.srt`, and `segments.json`. The JSON includes a per-segment fit report.
+
+- API: `POST /dub-transcribe` creates timestamped source segments; `POST /dub-render` generates the timed track and exports SRT.
+- This phase does not automatically translate text. Human review is required for every translated segment.
+- Alignment uses speech-recognition timestamps. If a generated line is longer than its time slot, Audiolab may time-stretch it or trim it; pronunciation, pacing, and timing need listening review.
+- The exported WAV is a dubbed voice track only. It does not include the original background audio, and it is not lip-sync.
+- Model inference remains local and requires the optional faster-whisper setup plus a working IndicF5 environment. Runtime audio quality must be verified on the target machine.
+
