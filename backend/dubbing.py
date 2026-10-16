@@ -6,6 +6,7 @@ tested without downloading or loading speech models.
 from __future__ import annotations
 
 import math
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 
@@ -57,7 +58,7 @@ def validate_dub_segments(rows: Any) -> list[dict]:
 
 
 def _srt_timestamp(seconds: float) -> str:
-    total_ms = max(0, int(math.floor(float(seconds) * 1000 + 0.5)))
+    total_ms = max(0, int((Decimal(str(seconds)) * Decimal(1000)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
     hours, rem = divmod(total_ms, 3_600_000)
     minutes, rem = divmod(rem, 60_000)
     whole_seconds, milliseconds = divmod(rem, 1000)
