@@ -47,7 +47,7 @@ This file distinguishes source-code integration from successful runtime verifica
 
 ### Implemented in source
 - Added `backend/ai_music.py`, an optional lazy-loaded MusicGen Small text-to-music integration using local Transformers/PyTorch inference.
-- Added `backend/requirements-music.txt` for the optional EnCodec dependency.
+- Added `backend/requirements-music.txt` to pin the existing Transformers version for MusicGen setup.
 - Added `POST /music-generate` to create a WAV from a prompt and duration, with request validation, one-generation-at-a-time locking, error handling, and output cleanup.
 - Added MusicGen dependency/model state to `GET /health` and `GET /models` without triggering model downloads.
 - Added a Text to music card in the Studio Tools page; the existing procedural music sketch remains separately labelled.
