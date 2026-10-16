@@ -39,7 +39,7 @@ from voice_conversion import (
 
 app = FastAPI(
     title="Audiolab AI Audio Studio API",
-    version="2.6.0",
+    version="2.7.0",
     description=(
         "Local-first audio processing API. Model-backed endpoints require their optional local "
         "dependencies and model weights. Sound effects and music sketches are procedural DSP, "
@@ -155,7 +155,7 @@ def health():
     return {
         "status": "ok",
         "product": "Audiolab AI Audio Studio",
-        "version": "2.6.0",
+        "version": "2.7.0",
         "limits": {
             "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
             "max_text_characters": MAX_TEXT_LENGTH,
