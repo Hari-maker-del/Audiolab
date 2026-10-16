@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 import uuid
+import zipfile
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +21,9 @@ from audio_tools import (
 )
 from engine import IndicF5Engine, LANGS
 from speech_to_text import SpeechToTextUnavailable, status as speech_to_text_status, transcribe as transcribe_speech
+from source_separation import (
+    SeparationFailed, SeparationUnavailable, separate_to_stems, separation_status,
+)
 from voice_conversion import (
     VoiceConversionUnavailable,
     convert_voice,
@@ -28,7 +32,7 @@ from voice_conversion import (
 
 app = FastAPI(
     title="Audiolab AI Audio Studio API",
-    version="2.3.0",
+    version="2.4.0",
     description=(
         "Local-first audio processing API. Model-backed endpoints require their optional local "
         "dependencies and model weights. Sound effects and music sketches are procedural DSP, "
@@ -144,7 +148,7 @@ def health():
     return {
         "status": "ok",
         "product": "Audiolab AI Audio Studio",
-        "version": "2.3.0",
+        "version": "2.4.0",
         "limits": {
             "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
             "max_text_characters": MAX_TEXT_LENGTH,
@@ -162,7 +166,8 @@ def health():
         "languages": list(LANGS.keys()),
         "voice_conversion": get_voice_conversion_status(),
         "speech_to_text": speech_to_text_status(),
-        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist"],
+        "source_separation": separation_status(),
+        "modules": ["timeline", "trim", "normalize", "fade", "reverse", "speed", "pitch", "silence", "enhance", "eq", "compressor", "noise-reduction", "reverb", "merge", "mix", "quality", "voice-generation", "voice-conversion", "speech-to-text", "sound-effects", "music-sketch", "dubbing-assist", "vocal-isolation"],
     }
 
 
@@ -195,6 +200,7 @@ def models_endpoint():
             },
             get_voice_conversion_status(),
             speech_to_text_status(),
+            separation_status(),
         ]
     }
 
@@ -304,6 +310,57 @@ def dubbing_assist_endpoint(
             target.unlink(missing_ok=True)
         if not response_ready:
             output.unlink(missing_ok=True)
+
+
+def cleanup_separation_artifacts(archive_path: Path, work_dir: Path):
+    """Clean the archive and its model output files after the response is sent."""
+    archive_path.unlink(missing_ok=True)
+    shutil.rmtree(work_dir, ignore_errors=True)
+
+
+@app.post("/separate")
+def separate_endpoint(file: UploadFile = File(...)):
+    """Separate an uploaded track into vocals and instrumental WAVs using local Demucs."""
+    source = None
+    work_dir = OUT / f"audiolab-separation-{uuid.uuid4().hex}"
+    archive_path = make_output("separated-stems", ".zip")
+    response_ready = False
+    try:
+        source = save_upload(file)
+        work_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            vocals, instrumental = separate_to_stems(source, work_dir)
+        except SeparationUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except SeparationFailed as exc:
+            message = str(exc)
+            status_code = 504 if "exceeded the" in message.lower() else 500
+            raise HTTPException(status_code=status_code, detail=message) from exc
+
+        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+            bundle.write(vocals, arcname="vocals.wav")
+            bundle.write(instrumental, arcname="instrumental.wav")
+
+        response = FileResponse(
+            archive_path,
+            media_type="application/zip",
+            filename="audiolab-separated-stems.zip",
+            background=BackgroundTask(cleanup_separation_artifacts, archive_path, work_dir),
+        )
+        response_ready = True
+        return response
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Source separation failed due to an internal processing error.") from exc
+    finally:
+        if source is not None:
+            source.unlink(missing_ok=True)
+        if not response_ready:
+            archive_path.unlink(missing_ok=True)
+            shutil.rmtree(work_dir, ignore_errors=True)
 
 
 @app.post("/analyze")
