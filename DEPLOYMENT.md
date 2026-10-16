@@ -42,3 +42,10 @@ A full queue returns HTTP 429 with a retry hint. Job IDs are random, but authori
 ## Production scaling boundary
 
 This release provides a bounded **single-process** queue, not a distributed durable queue. Do not scale it to multiple replicas expecting shared job status or artifact paths. Before horizontal scaling, replace the in-process queue with a durable broker (for example Redis/Celery or a managed queue), persist job metadata, store artifacts in shared object storage with expiry, add user-scoped authorization/quotas, and configure observability and cleanup policies. The public UI should call a trusted gateway; it should not connect to a raw local inference server or carry a shared backend secret.
+
+
+## Job history workspace (Phase 11)
+
+The Studio **History** page displays browser-local generation entries separately from backend jobs. It fetches `GET /jobs?limit=50` from the configured local API, and supports filters for `queued`, `running`, `succeeded`, and `failed`. A failed API request is shown as an explicit unavailable state with a retry control; the UI does not fabricate history.
+
+Successful dubbing-render jobs expose a download link. The download response is temporary and the backend deletes the archive after serving it, so save the ZIP before leaving the page. The backend history remains metadata-only and does not guarantee the archive survives a restart or a previous download.
