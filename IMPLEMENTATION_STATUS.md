@@ -43,6 +43,30 @@ This file distinguishes source-code integration from successful runtime verifica
 - Run a real IndicF5 generation test for each target language before describing that language as quality-verified.
 - CI syntax checks and source integration do not establish speech recognition accuracy or model inference success.
 
+## Phase 7 conversational voice agent (2026-10-16)
+
+### Implemented in source
+- Added `backend/voice_agent.py` for local rule-based intent recognition and helpful responses for music generation, vocal isolation, speech generation, transcription, voice conversion, help, and fallback.
+- Added `POST /voice-agent`: accepts a typed request or uploaded speech, optionally transcribes with faster-whisper, and returns the recognized request, intent and reply.
+- Optional spoken reply uses IndicF5 with an explicitly supplied voice reference and exact transcript; consent is required for that reference.
+- Added model/status metadata for the voice-agent capability to `GET /health` and `GET /models`.
+- Added the Talk to Audiolab UI with typed/spoken input, language choice, optional voice reference, permission confirmation, and reply playback/download.
+- Added tests for intent routing, Tamil-script hinting, empty input validation, and reply mode.
+- Documented setup, dependency requirements and limitations in README.
+
+### Scope and privacy limits
+- Intent handling is deterministic rule matching, not a general-purpose LLM; unrecognized requests return a fallback response.
+- Audio input requires the optional faster-whisper package/model. Spoken output requires a working IndicF5 installation and user-provided authorized voice reference/transcript.
+- This is request/response, not continuous streaming full-duplex voice chat.
+- Conversation state is not stored server-side; any session memory must be handled by the client.
+- CI tests do not download speech or TTS model weights and do not prove end-to-end audio quality.
+
+### Runtime verification still required
+- Restart the local Windows backend and test typed help, a Tamil typed request, and an uploaded speech recording.
+- Install optional speech dependencies if needed and confirm actual transcription.
+- Test spoken reply with an authorized reference and verify generated WAV playback/download.
+- Test missing dependencies, invalid audio, and errors from first-run model downloads.
+
 ## Phase 6 AI music generation (2026-10-16)
 
 ### Implemented in source
