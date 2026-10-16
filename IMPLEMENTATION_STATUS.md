@@ -50,7 +50,8 @@ This file distinguishes source-code integration from successful runtime verifica
 - Added `POST /dub-transcribe` to run local Whisper transcription and return source-language metadata plus editable timestamped segments.
 - Added `POST /dub-render` to synthesize each reviewed translated segment through local IndicF5, place it on the segment timeline, and export a ZIP containing `dubbed_voice.wav`, `subtitles.srt`, and `segments.json`.
 - Added per-segment fit metadata showing whether speech stayed natural, was time-stretched, or was trimmed to fit its slot.
-- Added a sentence-timed dubbing UI with editable start/end timestamps, source transcript, reviewed translation fields, consent, and ZIP download. Retained the older whole-script dub as an explicitly untimed fallback.
+- Added a sentence-timed dubbing UI with editable source transcript, start/end timestamps, reviewed translations, live SRT preview, front-end timing checks, voice-use consent, and ZIP download. Retained the older whole-script dub as an explicitly untimed fallback.
+- Hardened SRT export so millisecond rounding cannot produce a zero-length subtitle cue; added regression coverage for the boundary case.
 - Bumped API version to 2.7.0.
 
 ### Scope and limitations
