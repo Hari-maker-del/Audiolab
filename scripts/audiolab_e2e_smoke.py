@@ -10,7 +10,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import socket
 import time
 import urllib.error
 import urllib.parse
@@ -35,9 +34,10 @@ def validate_base_url(value: str) -> str:
         raise SmokeTestError("API URL must be an http:// loopback address (for example http://127.0.0.1:8000).")
     hostname = parsed.hostname.lower()
     try:
-        is_loopback = hostname in LOOPBACK_NAMES or socket.getaddrinfo(hostname, parsed.port or 80)[0][4][0] and __import__("ipaddress").ip_address(socket.getaddrinfo(hostname, parsed.port or 80)[0][4][0]).is_loopback
-    except (OSError, ValueError, IndexError):
-        is_loopback = False
+        import ipaddress
+        is_loopback = hostname in LOOPBACK_NAMES or ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        is_loopback = hostname in LOOPBACK_NAMES
     if not is_loopback:
         raise SmokeTestError("Safety stop: the smoke test only permits a loopback backend. Do not expose your local inference API publicly.")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
