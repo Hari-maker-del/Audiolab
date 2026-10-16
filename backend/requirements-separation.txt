@@ -1,0 +1,3 @@
+# Optional local vocal/instrumental source separation; not required for TTS.
+# First use downloads Demucs HTDemucs weights. CPU works but may be slow.
+demucs==4.0.1
