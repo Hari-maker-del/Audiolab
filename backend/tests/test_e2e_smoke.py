@@ -122,6 +122,7 @@ def test_render_smoke_exercises_http_submit_poll_history_and_download(tmp_path):
         output = run_smoke(
             base_url=server.base_url,
             render_manifest=str(manifest),
+            confirm_voice_rights=True,
             output_dir=str(tmp_path),
             timeout=1,
             on_message=lambda _message: None,
