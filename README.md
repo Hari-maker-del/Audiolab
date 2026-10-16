@@ -389,3 +389,13 @@ The studio History page now brings together two distinct sources: browser-local 
 - UI connection failures are shown explicitly with a retry action; the page does not fabricate job records when the local backend is unavailable.
 - Automated tests cover public render-path redaction, transcription result visibility, and failed-job error display.
 - The static-check workflow checks the edited frontend JavaScript syntax and runs the backend tests. Real model inference remains a separate runtime verification step.
+
+
+## Phase 12 — End-to-end job reliability
+
+- Added a shared browser job client for status polling and render downloads.
+- Temporary network failures and HTTP 429/5xx responses retry with bounded backoff; authorization and other terminal errors are surfaced immediately.
+- Polling has a deadline, validates job-status payloads, and reports retries to the user rather than failing at the first connection blip.
+- Render downloads must have a ZIP signature; successful HTML/error pages are rejected instead of being presented as audio exports.
+- Added dependency-free Node tests for success/failure states, transient errors, timeout, URL validation, and ZIP integrity. GitHub Actions now runs these tests.
+- This validates workflow reliability with mocked HTTP responses. It does not replace a real browser/backend test using model weights and actual audio files.
