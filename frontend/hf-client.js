@@ -117,10 +117,10 @@ window.addEventListener("audiolab-hf-status", (event) => {
     if (model) model.textContent = "IndicF5 Connecting…";
     if (device) device.textContent = "Connecting when needed";
   } else if (stage === "ready") {
-    if (model) model.textContent = "IndicF5 Ready";
-    if (device) device.textContent = "ZeroGPU connected";
+    if (model) model.textContent = "IndicF5 Not Yet Verified";
+    if (device) device.textContent = "Hosted Space API reachable";
   } else if (stage === "error") {
-    if (model) model.textContent = "IndicF5 Available on demand";
-    if (device) device.textContent = "Retry on Generate";
+    if (model) model.textContent = "IndicF5 Connection Failed";
+    if (device) device.textContent = "Check backend / retry Generate";
   }
 });
