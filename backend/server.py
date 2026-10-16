@@ -229,10 +229,8 @@ def dubbing_assist_endpoint(
         target = save_upload(target_file)
         try:
             source_result = transcribe_speech(source, source_language or None)
-            clean(str(target), REF / f"dub-reference-{uuid.uuid4().hex}.wav")
-            cleaned = next(REF.glob("dub-reference-*.wav"), None)
-            if cleaned is None:
-                raise RuntimeError("Could not prepare target voice reference.")
+            cleaned = REF / f"dub-reference-{uuid.uuid4().hex}.wav"
+            clean(str(target), cleaned)
             try:
                 get_engine().generate(translated_text, cleaned, ref_text, output)
             finally:
