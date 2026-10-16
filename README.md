@@ -214,3 +214,47 @@ Studio → Tools → **Dubbing assist** takes an original recording, a reviewed 
 ### Not yet delivered as AI-model features
 
 Real generative music, source-separated vocal isolation, automatic translation, and a full conversational voice agent need separate model integrations and runtime tests. The procedural music bed and existing spectral noise-reduction filter must not be described as AI music generation or true vocal source separation.
+
+## Phase 4 — Production readiness
+
+### API documentation
+
+Start the local backend and open:
+
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
+- OpenAPI schema: `http://127.0.0.1:8000/openapi.json`
+- Health/model diagnostics: `http://127.0.0.1:8000/health` and `/models`
+
+The health payload reports configured upload/text limits and model status separately from API availability. The backend uses a local-only bind by default. Do not expose it to the public internet without authentication, TLS, rate limiting, and an explicit deployment/security design.
+
+### Reliability improvements
+
+- Upload filenames no longer control temporary-file suffixes; unknown extensions are normalized.
+- Merge/mix upload loops now clean up files even if a later upload fails.
+- Startup cleanup removes Audiolab artifacts older than 24 hours left behind by an abrupt shutdown.
+- API metadata identifies the local-first nature of inference and discloses that procedural sound/music are DSP.
+- Tool results announce progress/errors, revoke replaced browser object URLs, and use the configured local API base.
+- The Studio already includes responsive layouts for tablet/mobile widths (900px and 520px breakpoints).
+
+### Automated tests
+
+GitHub Actions compiles backend Python, checks frontend JavaScript syntax, and runs lightweight tests for every sound-effect type, every procedural music style, WAV validity, deterministic output, and invalid input limits. This test suite does not download IndicF5/OpenVoice/Whisper weights and does not replace Windows end-to-end listening tests.
+
+To run the procedural tests locally:
+
+```powershell
+python -m pip install pytest numpy scipy soundfile
+python -m pytest -q backend/tests
+```
+
+### Runtime acceptance checklist
+
+- Open `/health`, `/docs`, and `/models`.
+- Generate each sound effect and music sketch; play and download every WAV.
+- Try invalid effect/style/duration values and verify a clear 400 error.
+- Install optional STT and model files, then test transcription, IndicF5 generation, voice conversion, and dubbing with authorized recordings.
+- On a phone-sized viewport, navigate Studio, Generate, Voices, History, Tools and Settings; check file selection, audio playback and downloads.
+- Check browser storage quota, clear-data behavior, and recovery from an offline backend.
+
+The source code and CI can validate deterministic DSP workflows. Actual AI model quality, Windows hardware compatibility, and full mobile-browser behavior still require local runtime verification.
