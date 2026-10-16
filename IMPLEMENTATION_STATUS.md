@@ -43,6 +43,27 @@ This file distinguishes source-code integration from successful runtime verifica
 - Run a real IndicF5 generation test for each target language before describing that language as quality-verified.
 - CI syntax checks and source integration do not establish speech recognition accuracy or model inference success.
 
+## Phase 4 production-readiness updates (2026-10-16)
+
+### Implemented in source
+- Expanded FastAPI metadata to version 2.3.0 and documented the API in Swagger UI (`/docs`), ReDoc (`/redoc`), and OpenAPI JSON (`/openapi.json`).
+- Added upload/text limits and API docs path to `/health` diagnostics.
+- Normalized untrusted upload filename suffixes to a small allow-list.
+- Fixed merge/mix cleanup so partial upload failures do not leave earlier temporary uploads behind.
+- Added startup cleanup for Audiolab temporary/output artifacts older than 24 hours, including files left by an abrupt prior shutdown.
+- Improved audio-tools UI with configured local API base, live status regions, and revocation of previous object URLs when replacing generated audio.
+- Added automated procedural audio tests for all supported effect/style types, WAV sample rate/shape/finite values, deterministic seeded output, and invalid inputs.
+- CI now compiles Python, checks JavaScript syntax, installs lightweight test dependencies, and runs the procedural audio test suite.
+- Documented mobile responsive breakpoints, API docs, local test commands, and manual end-to-end acceptance steps.
+
+### Still requires runtime verification
+- Confirm the latest GitHub Actions run completes successfully after the Phase 4 UI/docs commits.
+- Run the Windows backend and check `/health`, `/docs`, and `/models`.
+- Verify real IndicF5, Whisper, and OpenVoice inference on the user's hardware; CI intentionally does not download multi-gigabyte model dependencies.
+- Manually test every editor endpoint, all audio downloads, mobile viewport behavior, and browser storage limits.
+- Local-only FastAPI remains unauthenticated and should not be exposed to the public internet as-is. A public API deployment needs a separate security architecture, authentication, TLS, rate limiting, and resource controls.
+- The Docker/GPU backend workflow has separate failures and is not proof that local inference or a hosted GPU deployment works.
+
 ## Phase 3 advanced audio features (2026-10-16)
 
 ### Implemented in source
