@@ -340,10 +340,11 @@ Optional speech-recognition setup, if it is not already installed:
 
 Studio → Tools → **Sentence-timed dubbing studio** provides a local dubbing-project workflow:
 
-1. Upload the source recording and transcribe it with optional local faster-whisper. The API returns editable source segments and timestamps.
-2. Review the transcript, adjust each segment's start/end time if needed, and enter the reviewed translation for every segment.
-3. Provide an authorized target voice reference and its exact transcript, then render with local IndicF5.
-4. Download a ZIP containing `dubbed_voice.wav`, `subtitles.srt`, and `segments.json`. The JSON includes a per-segment fit report.
+1. Upload the source recording and transcribe it with optional local faster-whisper. The API returns timestamped segments.
+2. Edit the recognized source text, adjust each segment's start/end time, and enter the reviewed translation for every segment.
+3. Use the live SRT preview to check translated text and subtitle timecodes before rendering. Invalid time ranges and obvious overlaps are rejected in the UI; the backend validates again.
+4. Provide an authorized target voice reference and its exact transcript, then render with local IndicF5.
+5. Download a ZIP containing `dubbed_voice.wav`, `subtitles.srt`, and `segments.json`. The JSON includes a per-segment fit report.
 
 - API: `POST /dub-transcribe` creates timestamped source segments; `POST /dub-render` generates the timed track and exports SRT.
 - This phase does not automatically translate text. Human review is required for every translated segment.
