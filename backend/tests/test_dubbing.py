@@ -67,7 +67,7 @@ def test_srt_rounding_carries_into_next_second_and_minute():
     srt = build_srt([
         {"start": 59.9996, "end": 60.0004, "translated_text": "நன்றி"}
     ])
-    assert "00:01:00,000 --> 00:01:00,000" in srt
+    assert "00:01:00,000 --> 00:01:00,001" in srt
     assert "நன்றி" in srt
 
 
@@ -94,3 +94,10 @@ def test_validation_rejects_sub_millisecond_slot_after_normalization():
         validate_dub_segments([
             {"start": 0, "end": 0.0004, "translated_text": "Too short"}
         ])
+
+
+def test_srt_never_exports_zero_length_cues_after_rounding():
+    srt = build_srt([
+        {"start": 1.2344, "end": 1.2345, "translated_text": "Short cue"}
+    ])
+    assert "00:00:01,234 --> 00:00:01,235" in srt
