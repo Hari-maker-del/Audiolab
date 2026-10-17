@@ -38,5 +38,7 @@ jobs:
           node --check frontend/studio-fix.js
           node --check frontend/app-fixed.js
           node --check frontend/job-client.js
+          node --check frontend/project-assets.js
+          node --check frontend/mvp-workflows.js
           node --check frontend/landing-3d.js
           node --test frontend/tests/*.test.cjs
