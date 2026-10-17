@@ -8,6 +8,286 @@
     {
       "source": "/",
       "destination": "/landing.html"
+    },
+    {
+      "source": "/features",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/use-cases",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/templates",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/blog",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/help",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/cookies",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/signup",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/forgot-password",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/reset-password",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/verify",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/auth/callback",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/onboarding",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/onboarding/invite",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/projects",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/projects/new",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/projects/:id/editor",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/projects/:id/mixer",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/library",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/recordings",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/transcript",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/ai/cleanup",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/ai/voice",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/ai/music",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/ai/stems",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/ai/mastering",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/export",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/exports",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/jobs",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/workspace",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/workspace/members",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/workspace/shared",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/review",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/versions",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/notifications",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/share/:token",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/account/profile",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/account/security",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/account/integrations",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/account/notifications",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/account/appearance",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/billing",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/billing/plans",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/billing/payment-methods",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/billing/invoices",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/usage",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/api-keys",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/account/delete",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/users",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/workspaces",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/plans",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/credits",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/jobs",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/moderation",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/analytics",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/support",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/admin/settings",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/403",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/404",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/500",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/maintenance",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/status",
+      "destination": "/app-pages.html"
+    },
+    {
+      "source": "/cookie-consent",
+      "destination": "/app-pages.html"
     }
   ]
 }
