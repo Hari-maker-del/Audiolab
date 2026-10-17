@@ -99,3 +99,11 @@ def test_preflight_rejects_remote_api_before_any_network_call(tmp_path, monkeypa
     with pytest.raises(ValueError, match="loopback"):
         preflight.run_preflight(api_url="http://203.0.113.10:8000", project_root=tmp_path)
     assert called == []
+
+
+
+def test_preflight_rejects_invalid_timeout_and_disk_threshold(tmp_path):
+    with pytest.raises(ValueError, match="timeout"):
+        preflight.run_preflight(project_root=tmp_path, timeout=0)
+    with pytest.raises(ValueError, match="disk threshold"):
+        preflight.run_preflight(project_root=tmp_path, minimum_free_gb=-1)
