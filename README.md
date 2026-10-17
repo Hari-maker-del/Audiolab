@@ -413,3 +413,8 @@ The smoke client rejects non-loopback hosts. CI uses a synthetic local HTTP fixt
 Run `python scripts/audiolab_preflight.py` before a model-backed test to check Python, required API packages, optional audio packages, free disk space, the project virtual environment, and the loopback API health/feature status. Use `--json` for machine-readable output. It is read-only and does not install packages, download models, or submit audio. The API URL is restricted to loopback. See [docs/PHASE14_LOCAL_PREFLIGHT.md](docs/PHASE14_LOCAL_PREFLIGHT.md).
 
 A successful preflight is not proof that model inference works; use the Phase 13 smoke test with real audio for that final check.
+
+
+## Phase 14 — Local readiness diagnostics
+
+Run `python scripts/audiolab_preflight.py --project-root .` before model-backed testing to inspect Python version, core API dependencies, optional audio packages, disk space, virtual-environment presence, local API health, and IndicF5 load state. The tool performs no installation, model download, or audio submission and only contacts loopback HTTP APIs. See [docs/PHASE14_PREFLIGHT.md](docs/PHASE14_PREFLIGHT.md).
