@@ -41,7 +41,13 @@
   const getAll = async name => { const db=await openDB(); return new Promise((resolve,reject)=>{const tx=db.transaction(name,"readonly");const q=tx.objectStore(name).getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error);tx.oncomplete=()=>db.close();}); };
   const put = (name,value) => store(name,"readwrite",os=>os.put(value));
   const del = (name,key) => store(name,"readwrite",os=>os.delete(key));
-  const readPath = () => location.pathname.replace(/\/+$/,"") || "/";
+  const readPath = () => {
+    if(localStatic() && location.pathname.endsWith("/app-pages.html")) {
+      const hash=location.hash.startsWith("#/")?location.hash.slice(1).split("?")[0]:"/dashboard";
+      return hash.replace(/\\/+$/,"") || "/";
+    }
+    return location.pathname.replace(/\\/+$/,"") || "/";
+  };
   const isEditor = p => /^\/projects\/[^/]+\/editor$/.test(p);
   const isMixer = p => /^\/projects\/[^/]+\/mixer$/.test(p);
   const readFileDuration = file => new Promise(resolve => {
@@ -209,6 +215,18 @@
     }catch(error){
       root.innerHTML='<main class="public-main"><h1>Could not load this page</h1><p class="lead">'+esc(error.message||"Local storage error")+'</p><a class="button primary" href="/projects">Back to projects</a></main>';
     }
+  }
+  if(localStatic()) {
+    document.addEventListener("click",event=>{
+      const link=event.target.closest("a[href]");
+      if(!link||event.defaultPrevented||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+      const url=new URL(link.href,location.href);
+      if(url.origin!==location.origin||url.pathname.endsWith(".html")||url.pathname.startsWith("/api/"))return;
+      if(!url.pathname.startsWith("/"))return;
+      event.preventDefault();
+      location.hash=url.pathname+url.search;
+    });
+    window.addEventListener("hashchange",render);
   }
   render();
 })();
