@@ -119,7 +119,8 @@
     const tracks=p.tracks.filter(t=>t&&t.audioBlob);
     const total=Math.max(0,...tracks.map(t=>Math.max(0,Number(t.offset)||0)+Math.max(0,Number(t.duration)||0)));
     const scale=Math.max(10,total);
-    const ticks=Array.from({length:Math.min(11,Math.max(3,Math.ceil(scale/5)+1))},(_,i)=>{const time=scale*i/(Math.min(11,Math.max(3,Math.ceil(scale/5)+1)-1);return '<span style="left:'+((time/scale)*100)+'%">'+time.toFixed(0)+'s</span>';}).join("");
+    const tickCount=Math.min(11,Math.max(3,Math.ceil(scale/5)+1));
+    const ticks=Array.from({length:tickCount},(_,i)=>{const time=scale*i/(tickCount-1);return '<span style="left:'+((time/scale)*100)+'%">'+time.toFixed(0)+'s</span>';}).join("");
     const timeline=tracks.length?tracks.map((t,i)=>{
       const offset=Math.max(0,Number(t.offset)||0),duration=Math.max(0,Number(t.duration)||0);
       return '<div class="mvp-track-row"><div class="mvp-track-meta"><b>'+esc(t.name||("Track "+(i+1)))+'</b><small>'+duration.toFixed(2)+'s · '+prettyBytes(t.audioBlob.size||0)+'</small><div class="mvp-track-controls"><label>Start <input type="number" min="0" max="36000" step="0.1" value="'+offset+'" data-track-offset="'+esc(t.id)+'"></label><label>Level <input type="range" min="0" max="1.5" step="0.05" value="'+Math.max(0,Math.min(1.5,Number(t.gain??1)))+'" data-track-gain="'+esc(t.id)+'"></label><label class="mvp-mute"><input type="checkbox" '+(t.muted?'checked':'')+' data-track-mute="'+esc(t.id)+'"> Mute</label><button class="button" type="button" data-track-remove="'+esc(t.id)+'">Remove</button></div></div><div class="mvp-track-lane"><div class="mvp-track-clip" title="'+esc(t.name)+'" style="left:'+Math.min(99,(offset/scale)*100)+'%;width:'+Math.min(100-(offset/scale)*100,Math.max(1,(duration/scale)*100))+'%"><span>♫ '+esc(t.name)+'</span></div></div></div>';
@@ -141,15 +142,16 @@
       try{
         const ctx=new Ctx();timelineContext=ctx;await ctx.resume();
         const startAt=ctx.currentTime+0.12;let maxEnd=0;
+        const masterVolume=mixer?Number(document.getElementById("mvp-volume")?.value??1):1;
         for(const track of active){
           const decoded=await ctx.decodeAudioData(await track.audioBlob.arrayBuffer());
           const source=ctx.createBufferSource();source.buffer=decoded;
-          const gain=ctx.createGain();gain.gain.value=track.muted?0:Math.max(0,Math.min(1.5,Number(track.gain??1)));
+          const gain=ctx.createGain();gain.gain.value=track.muted?0:Math.max(0,Math.min(1.5,Number(track.gain??1)))*Math.max(0,Math.min(1,masterVolume));
           source.connect(gain);gain.connect(ctx.destination);
           const offset=Math.max(0,Number(track.offset)||0);source.start(startAt+offset);
           timelineNodes.push(source);maxEnd=Math.max(maxEnd,offset+decoded.duration);
         }
-        if(mixer){const master=Number(document.getElementById("mvp-volume")?.value??1);/* applied to live preview below */if(master<1){const gain=ctx.createGain();gain.gain.value=master;}}
+
         if(status)status.textContent="Playing "+active.length+" track(s)…";
         stopTimer=setTimeout(()=>{stopMix();},Math.max(0,maxEnd*1000+250));
       }catch(error){await stopMix();if(status)status.textContent="Could not play the timeline: "+(error.message||"audio decode failed");}
