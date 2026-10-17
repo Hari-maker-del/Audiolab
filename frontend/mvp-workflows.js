@@ -44,9 +44,9 @@
   const readPath = () => {
     if(localStatic() && location.pathname.endsWith("/app-pages.html")) {
       const hash=location.hash.startsWith("#/")?location.hash.slice(1).split("?")[0]:"/dashboard";
-      return hash.replace(/\\/+$/,"") || "/";
+      return hash.replace(/\/+$/,"") || "/";
     }
-    return location.pathname.replace(/\\/+$/,"") || "/";
+    return location.pathname.replace(/\/+$/,"") || "/";
   };
   const isEditor = p => /^\/projects\/[^/]+\/editor$/.test(p);
   const isMixer = p => /^\/projects\/[^/]+\/mixer$/.test(p);
