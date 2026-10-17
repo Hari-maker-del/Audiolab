@@ -110,7 +110,11 @@
       duration: await durationOf(file), offset: Math.max(0, Number(config.offset) || 0),
       gain: 1, muted: false, createdAt: stamp(), origin: config.origin || "imported"
     };
-    project.tracks = Array.isArray(project.tracks) ? project.tracks : [];
+    project.tracks = Array.isArray(project.tracks) ? project.tracks : (project.audioBlob ? [{
+      id: "source-" + project.id, name: project.audioName || "Source audio", audioBlob: project.audioBlob,
+      audioType: project.audioType || "audio/wav", duration: project.duration || await durationOf(project.audioBlob),
+      offset: 0, gain: 1, muted: false, origin: "source"
+    }] : []);
     project.tracks.push(track);
     if (!project.audioBlob) {
       project.audioBlob = file; project.audioName = filename; project.audioType = track.audioType; project.duration = track.duration;
