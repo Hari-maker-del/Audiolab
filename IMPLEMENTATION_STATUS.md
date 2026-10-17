@@ -261,3 +261,13 @@ This file distinguishes source-code integration from successful runtime verifica
 - Added regression tests for missing dependencies, unavailable API, optional-feature warnings, JSON serialization, and remote-host rejection.
 - Instructions: [docs/PHASE14_LOCAL_PREFLIGHT.md](docs/PHASE14_LOCAL_PREFLIGHT.md).
 - Verification boundary: a passing preflight is not a real model inference test. Phase 13 local audio checks are still required to verify actual generation on the user's Windows machine.
+
+
+## Phase 14 — Local readiness diagnostics (2026-10-17)
+
+- Added `scripts/audiolab_preflight.py` to diagnose Python/runtime version, required API packages, optional audio distributions, disk space, project virtual environment, local API health, feature status, and lazy-loaded IndicF5 state.
+- The preflight rejects non-loopback API URLs, makes no changes to the environment, downloads no models, and submits no audio.
+- Added tests for loopback restrictions, healthy/unavailable API states, missing dependencies, optional package warnings, unloaded-model semantics, and JSON serialization.
+- CI now compiles the new local diagnostic scripts and runs the preflight test module as part of the backend suite.
+- Instructions: [docs/PHASE14_PREFLIGHT.md](docs/PHASE14_PREFLIGHT.md).
+- Verification boundary: preflight is diagnostic only. It does not establish that actual model inference works; use the Phase 13 local audio smoke test for that.
