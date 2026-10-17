@@ -33,9 +33,6 @@ create table if not exists public.audiolab_audio_assets (
     on delete cascade
 );
 -- Composite unique key enables the ownership-enforcing composite foreign key.
-grant select, insert, update, delete on public.audiolab_projects to authenticated;
-grant select, insert, delete on public.audiolab_audio_assets to authenticated;
-grant select, insert on public.audiolab_processing_jobs to authenticated;
 create index if not exists audiolab_assets_owner_created_idx
   on public.audiolab_audio_assets(owner_id, created_at desc);
 create index if not exists audiolab_assets_project_created_idx
@@ -56,6 +53,10 @@ create table if not exists public.audiolab_processing_jobs (
 );
 create index if not exists audiolab_jobs_owner_created_idx
   on public.audiolab_processing_jobs(owner_id, created_at desc);
+
+grant select, insert, update, delete on public.audiolab_projects to authenticated;
+grant select, insert, delete on public.audiolab_audio_assets to authenticated;
+grant select, insert on public.audiolab_processing_jobs to authenticated;
 
 alter table public.audiolab_projects enable row level security;
 alter table public.audiolab_audio_assets enable row level security;
