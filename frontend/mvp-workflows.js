@@ -11,7 +11,9 @@
   }[c]));
   const prettyBytes = n => n < 1024*1024 ? Math.max(1,Math.round(n/1024))+" KB" : (n/1024/1024).toFixed(1)+" MB";
   const stamp = () => new Date().toISOString();
-  const projectId = () => decodeURIComponent(location.pathname.split("/")[2] || "");
+  const localStatic = () => (location.hostname === "127.0.0.1" || location.hostname === "localhost") && location.port === "5500";
+  const routeSearch = () => { const raw=localStatic()&&location.hash.startsWith("#/")?location.hash.slice(1):location.pathname+location.search;return raw.includes("?")?raw.slice(raw.indexOf("?")+1):""; };
+  const projectId = () => decodeURIComponent(readPath().split("/")[2] || "");
   const openDB = () => new Promise((resolve,reject) => {
     if (!("indexedDB" in window)) return reject(new Error("This browser does not support local project storage."));
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -148,7 +150,7 @@
     return entry;
   }
   async function renderExport() {
-    const all=await getAll("projects");const params=new URLSearchParams(location.search);const chosen=params.get("project")||all[0]?.id;
+    const all=await getAll("projects");const params=new URLSearchParams(routeSearch());const chosen=params.get("project")||all[0]?.id;
     const options=all.map(p=>'<option value="'+esc(p.id)+'" '+(p.id===chosen?'selected':'')+'>'+esc(p.name)+(p.audioBlob?'':' (no audio')+'</option>').join("");
     const content='<form id="mvp-export-form" class="form-card"><label for="mvp-export-project">Project</label><select id="mvp-export-project">'+(options||'<option value="">No projects available</option>')+'</select><label>Export format</label><div class="quick-links"><label><input type="radio" name="format" value="original" checked> Original audio</label><label><input type="radio" name="format" value="wav"> Convert to WAV (PCM 16-bit)</label></div><p class="hint">Export runs in your browser. WAV conversion requires the browser to decode the source format; the original-file export preserves the source bytes.</p><button class="button primary" type="submit">Export and download</button>'+messageBox+'</form><div class="quick-links"><a href="/exports">View export history</a><a href="/projects">Back to projects</a></div>';
     shell("Export audio","Studio","Download an original audio file or convert supported audio to WAV locally.",content);
