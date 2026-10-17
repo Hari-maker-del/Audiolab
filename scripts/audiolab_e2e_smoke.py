@@ -129,12 +129,14 @@ def validate_render_zip(raw: bytes) -> list[str]:
 
 def _poll_job(base_url: str, job_id: str, *, timeout: float, api_key: str | None,
               on_message: Callable[[str], None], poll_interval: float = 1.0) -> dict:
-    deadline = time.monotonic() + timeout
+    started = time.monotonic()
+    deadline = started + timeout
     while time.monotonic() < deadline:
         _, job = _json_request(base_url, "/jobs/" + urllib.parse.quote(job_id, safe=""), api_key=api_key, timeout=10)
         if job.get("job_id") != job_id or job.get("status") not in {"queued", "running", "succeeded", "failed"}:
             raise SmokeTestError("Backend returned an invalid job status record.")
-        on_message(f"Job {job_id}: {job['status']}")
+        elapsed = time.monotonic() - started
+        on_message(f"Job {job_id}: {job['status']} (elapsed {elapsed:.0f}s)")
         if job["status"] == "succeeded":
             return job
         if job["status"] == "failed":
