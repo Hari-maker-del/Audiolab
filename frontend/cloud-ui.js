@@ -134,10 +134,5 @@
       host.prepend(warning);
     }
   }
-  document.addEventListener("submit", event => {
-    if (event.target?.id === "auth-form") {
-      event.preventDefault(); event.stopImmediatePropagation();
-    }
-  }, true);
   run();
 })();
