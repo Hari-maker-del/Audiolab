@@ -40,3 +40,8 @@ Do not share reports without reviewing them first. They include local paths, pac
 - **INFO**: context rather than a failure. In particular, IndicF5 being \`not_loaded\` at startup is expected because it loads on first generation.
 
 Preflight is not an inference benchmark. A successful health check does not prove the model can load on your GPU/CPU or generate valid audio. For that, run the Phase 13 smoke test with an actual short speech file, then optionally a permitted target voice reference and render manifest. See [Phase 13 E2E](PHASE13_E2E.md).
+
+
+## Input validation
+
+The preflight rejects non-finite or negative disk-space thresholds and non-positive/non-finite API timeouts. This keeps diagnostic settings predictable and prevents malformed CLI options from producing misleading reports.
