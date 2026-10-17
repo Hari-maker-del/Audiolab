@@ -90,7 +90,7 @@ MAX_CONCURRENT_HEAVY_REQUESTS = max(1, int(os.getenv("AUDIOLAB_MAX_CONCURRENT_JO
 RATE_LIMITER = SlidingWindowRateLimiter()
 HEAVY_REQUESTS = threading.BoundedSemaphore(MAX_CONCURRENT_HEAVY_REQUESTS)
 HEAVY_ENDPOINTS = {
-    "/generate", "/voice-convert", "/dub", "/dub-render", "/separate",
+    "/generate", "/jobs/generate", "/voice-convert", "/dub", "/dub-render", "/separate",
     "/music-generate", "/voice-agent",
 }
 JOB_QUEUE = BoundedJobQueue(
@@ -597,6 +597,62 @@ def _queued_dub_render(target_path: str, target_filename: str, segments_json: st
         source.unlink(missing_ok=True)
 
 
+def _queued_voice_generation(source_path: str, text: str, language: str, ref_text: str):
+    """Run IndicF5 off the request thread and retain the validated WAV for download."""
+    source = Path(source_path)
+    cleaned = REF / f"request-reference-{uuid.uuid4().hex}.wav"
+    output = make_output("generated-job")
+    succeeded = False
+    try:
+        clean(str(source), cleaned)
+        result = Path(get_engine().generate(text, cleaned, ref_text, output))
+        if not result.is_file() or result.stat().st_size <= 44:
+            raise RuntimeError("IndicF5 returned an empty audio file.")
+        import soundfile as sf
+        info = sf.info(str(result))
+        if info.frames <= 0 or info.samplerate <= 0:
+            raise RuntimeError("IndicF5 returned an invalid WAV file.")
+        succeeded = True
+        return {
+            "artifact_path": str(result),
+            "filename": f"audiolab-{language.lower()}-voice.wav",
+            "media_type": "audio/wav",
+            "sample_rate": int(info.samplerate),
+            "duration_seconds": round(float(info.frames) / float(info.samplerate), 3),
+        }
+    finally:
+        source.unlink(missing_ok=True)
+        cleaned.unlink(missing_ok=True)
+        if not succeeded:
+            output.unlink(missing_ok=True)
+
+
+@app.post("/jobs/generate", status_code=202)
+def enqueue_voice_generation(
+    text: str = Form(...),
+    language: str = Form("Tamil"),
+    ref_text: str = Form(...),
+    file: UploadFile = File(...),
+):
+    """Queue real IndicF5 generation and return a pollable job ID."""
+    validate_text(text, "Text")
+    validate_text(ref_text, "Reference transcript")
+    if language not in LANGS:
+        raise HTTPException(status_code=400, detail=f"Unsupported language: {language}")
+    source = save_upload(file)
+    try:
+        job_id = JOB_QUEUE.submit(
+            "voice-generate", _queued_voice_generation, str(source), text, language, ref_text
+        )
+    except QueueFullError as exc:
+        source.unlink(missing_ok=True)
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except Exception:
+        source.unlink(missing_ok=True)
+        raise
+    return {"job_id": job_id, "status": "queued", "status_url": f"/jobs/{job_id}"}
+
+
 @app.post("/jobs/dub-transcribe", status_code=202)
 def enqueue_dub_transcription(
     source_file: UploadFile = File(...),
@@ -676,17 +732,18 @@ def download_audio_job(job_id: str):
     job = JOB_QUEUE.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Audio job not found or expired after a backend restart.")
-    if job["kind"] != "dub-render":
-        raise HTTPException(status_code=400, detail="This job does not produce a downloadable archive.")
+    if job["kind"] not in {"dub-render", "voice-generate"}:
+        raise HTTPException(status_code=400, detail="This job does not produce a downloadable audio result.")
     if job["status"] != "succeeded" or not job.get("result"):
-        raise HTTPException(status_code=409, detail="The dubbing job has not completed successfully.")
+        raise HTTPException(status_code=409, detail="The audio job has not completed successfully.")
     artifact = Path(job["result"].get("artifact_path", ""))
     if not artifact.is_file():
-        raise HTTPException(status_code=410, detail="The job archive is no longer available; submit the job again.")
+        raise HTTPException(status_code=410, detail="The generated artifact is no longer available; submit the job again.")
+    is_voice = job["kind"] == "voice-generate"
     return FileResponse(
         artifact,
-        media_type="application/zip",
-        filename="audiolab-dubbing-project.zip",
+        media_type="audio/wav" if is_voice else "application/zip",
+        filename=job["result"].get("filename", "audiolab-dubbing-project.zip"),
         background=BackgroundTask(artifact.unlink, missing_ok=True),
     )
 
