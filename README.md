@@ -23,6 +23,10 @@ Audiolab is a Tamil-first, Indian-language voice generation studio built around 
 - CUDA PyTorch setup for supported NVIDIA GPUs
 - One-click Windows local launcher
 
+## Phase 15 — Real inference verification
+
+The local end-to-end smoke test now checks input audio before upload and validates actual transcription timestamps/text. Render exports are checked for a readable WAV with frames, timestamped SRT cues, and valid timed segment metadata. See [Phase 15 instructions](docs/PHASE15_REAL_INFERENCE_VALIDATION.md). These checks do not claim model inference works until you run them against your local model setup.
+
 ## Web entry points
 
 - `frontend/index.html`: public 3D marketing landing page.
