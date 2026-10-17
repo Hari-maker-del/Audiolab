@@ -112,7 +112,28 @@
       return blob;
     }
 
-    return { baseUrl, pollJob, downloadRender };
+    async function downloadAudio(jobId) {
+      const id = String(jobId || "").trim();
+      if (!id) throw new Error("A job ID is required to download generated audio.");
+      const response = await fetchImpl(baseUrl + "/jobs/" + encodeURIComponent(id) + "/download", {
+        headers: { Accept: "audio/wav" }
+      });
+      if (!response.ok) throw new Error(await readError(
+        response, "Generated audio could not be downloaded (" + response.status + ")."
+      ));
+      const blob = await response.blob();
+      if (!blob || typeof blob.size !== "number" || blob.size <= 44) {
+        throw new Error("The backend returned an empty or incomplete audio file.");
+      }
+      const header = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+      const isRiffWave = header.length === 12 &&
+        header[0] === 0x52 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x46 &&
+        header[8] === 0x57 && header[9] === 0x41 && header[10] === 0x56 && header[11] === 0x45;
+      if (!isRiffWave) throw new Error("The generated result is not a valid RIFF/WAVE file.");
+      return blob;
+    }
+
+    return { baseUrl, pollJob, downloadRender, downloadAudio };
   }
 
   return { createClient, normalizeBaseUrl };
