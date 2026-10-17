@@ -139,6 +139,12 @@ Multipart fields:
 
 The endpoint returns a WAV file when generation succeeds.
 
+### Queued voice generation (Studio local mode)
+
+`POST /jobs/generate` accepts the same multipart fields and returns HTTP 202 with a `job_id`. Poll `GET /jobs/{job_id}` until it succeeds or fails, then download the validated WAV from `GET /jobs/{job_id}/download`. The local Studio uses this queued path so long-running IndicF5 inference does not block a single upload request. Job metadata persists in local SQLite; queued/running inference is marked interrupted after a backend restart rather than silently resumed.
+
+See [Phase 16 — Async real voice generation](docs/PHASE16_ASYNC_VOICE_GENERATION.md).
+
 ### Voice conversion
 
 `POST /voice-convert`
