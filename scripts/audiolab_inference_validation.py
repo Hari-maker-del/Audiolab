@@ -135,8 +135,9 @@ def validate_render_archive(raw: bytes) -> dict:
                 raise AudioValidationError("dubbed_voice.wav has invalid parameters or no audio frames.")
             # Read the declared frames to catch truncated payloads.
             audio_bytes = wav.readframes(frames)
-            if not audio_bytes:
-                raise AudioValidationError("dubbed_voice.wav contains no decodable audio frames.")
+            expected_bytes = frames * channels * sample_width
+            if len(audio_bytes) < expected_bytes:
+                raise AudioValidationError("dubbed_voice.wav is truncated: fewer audio bytes than declared frames.")
             audio_report = {
                 "channels": channels,
                 "sample_rate_hz": sample_rate,
