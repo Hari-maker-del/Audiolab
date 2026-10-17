@@ -113,8 +113,17 @@
         return;
       }
       const user = await cloud.getUser();
+      if (path() === "/auth/callback") {
+        if (user) { location.replace("/dashboard"); return; }
+        root.innerHTML = '<main class="public-main"><h1>Confirming your Audiolab account</h1><p class="lead">If the link is valid, your session will be ready shortly.</p><p><a class="button primary" href="/login">Continue to sign in</a></p></main>';
+        return;
+      }
+      if (path() === "/verify") {
+        root.innerHTML = '<main class="public-main"><h1>Email verification</h1><p class="lead">Open the confirmation link sent to your email. Then sign in to access your cloud projects.</p><p><a class="button primary" href="/login">Continue to sign in</a></p></main>';
+        return;
+      }
       if (["/signup","/login"].includes(path()) && user) { location.replace("/dashboard"); return; }
-      if (["/signup","/login","/forgot-password","/reset-password","/verify","/auth/callback"].includes(path())) { await authForm(); return; }
+      if (["/signup","/login","/forgot-password","/reset-password"].includes(path())) { await authForm(); return; }
       if (["/dashboard","/projects"].includes(path())) {
         if (!user) { location.replace("/login?next="+encodeURIComponent(path())); return; }
         await dashboard(); return;
