@@ -209,9 +209,34 @@
   function downloadBlob(blob,name) {
     const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   }
+  async function renderTimelineMix(project) {
+    const tracks=Array.isArray(project.tracks)?project.tracks.filter(t=>t&&t.audioBlob):[];
+    if(!tracks.length)throw new Error("Add at least one audio track before exporting a mixdown.");
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    const Offline=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+    if(!Ctx||!Offline)throw new Error("Timeline mixdown is not supported by this browser.");
+    const decoder=new Ctx();
+    try{
+      const decoded=[];
+      for(const track of tracks)decoded.push({track,buffer:await decoder.decodeAudioData(await track.audioBlob.arrayBuffer())});
+      const duration=Math.max(...decoded.map(x=>Math.max(0,Number(x.track.offset)||0)+x.buffer.duration));
+      if(!Number.isFinite(duration)||duration<=0)throw new Error("The timeline has no playable duration.");
+      const sampleRate=44100;
+      const offline=new Offline(2,Math.ceil(duration*sampleRate),sampleRate);
+      for(const item of decoded){
+        const source=offline.createBufferSource();source.buffer=item.buffer;
+        const gain=offline.createGain();
+        gain.gain.value=item.track.muted?0:Math.max(0,Math.min(1.5,Number(item.track.gain??1)));
+        source.connect(gain);gain.connect(offline.destination);
+        source.start(Math.max(0,Number(item.track.offset)||0));
+      }
+      return makeWav(await offline.startRendering());
+    }finally{await decoder.close().catch(()=>{});}
+  }
   async function exportProject(project,format) {
-    if(!project.audioBlob)throw new Error("This project has no audio file. Open the editor and attach audio first.");
+    if(format!=="mixdown"&&!project.audioBlob)throw new Error("This project has no original audio file. Add a track first.");
     let blob=project.audioBlob,extension=(project.audioName.match(/\.([^.]+)$/)||[])[1]||"audio";
+    if(format==="mixdown"){blob=await renderTimelineMix(project);extension="wav";}
     if(format==="wav"){
       const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)throw new Error("WAV conversion is not supported by this browser.");
       const ctx=new Ctx();
@@ -221,14 +246,14 @@
     }
     const safe=(project.name||"audiolab-project").replace(/[^a-z0-9_-]+/gi,"-").replace(/^-|-$/g,"")||"audiolab-project";
     const name=safe+"."+extension;downloadBlob(blob,name);
-    const entry={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),projectId:project.id,projectName:project.name,fileName:name,format:format==="wav"?"WAV":"Original",size:blob.size,createdAt:stamp(),blob};
+    const entry={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),projectId:project.id,projectName:project.name,fileName:name,format:format==="wav"?"WAV":format==="mixdown"?"Timeline mixdown":"Original",size:blob.size,createdAt:stamp(),blob};
     await put("exports",entry);
     return entry;
   }
   async function renderExport() {
     const all=await getAll("projects");const params=new URLSearchParams(routeSearch());const chosen=params.get("project")||all[0]?.id;
     const options=all.map(p=>'<option value="'+esc(p.id)+'" '+(p.id===chosen?'selected':'')+'>'+esc(p.name)+(p.audioBlob?'':' (no audio')+'</option>').join("");
-    const content='<form id="mvp-export-form" class="form-card"><label for="mvp-export-project">Project</label><select id="mvp-export-project">'+(options||'<option value="">No projects available</option>')+'</select><label>Export format</label><div class="quick-links"><label><input type="radio" name="format" value="original" checked> Original audio</label><label><input type="radio" name="format" value="wav"> Convert to WAV (PCM 16-bit)</label></div><p class="hint">Export runs in your browser. WAV conversion requires the browser to decode the source format; the original-file export preserves the source bytes.</p><button class="button primary" type="submit">Export and download</button>'+messageBox+'</form><div class="quick-links"><a href="/exports">View export history</a><a href="/projects">Back to projects</a></div>';
+    const content='<form id="mvp-export-form" class="form-card"><label for="mvp-export-project">Project</label><select id="mvp-export-project">'+(options||'<option value="">No projects available</option>')+'</select><label>Export format</label><div class="quick-links"><label><input type="radio" name="format" value="original" checked> Original audio</label><label><input type="radio" name="format" value="wav"> Convert original to WAV (PCM 16-bit)</label><label><input type="radio" name="format" value="mixdown"> Render timeline mixdown (WAV)</label></div><p class="hint">Exports run locally in your browser. Timeline mixdown combines saved tracks, start offsets, levels and mute settings into a WAV file.</p><button class="button primary" type="submit">Export and download</button>'+messageBox+'</form><div class="quick-links"><a href="/exports">View export history</a><a href="/projects">Back to projects</a></div>';
     shell("Export audio","Studio","Download an original audio file or convert supported audio to WAV locally.",content);
     document.getElementById("mvp-export-form").addEventListener("submit",async e=>{e.preventDefault();const btn=e.currentTarget.querySelector('button[type="submit"]');btn.disabled=true;btn.textContent="Preparing export…";try{const id=document.getElementById("mvp-export-project").value;const p=await getOne("projects",id);if(!p)throw new Error("Choose an existing project.");const format=new FormData(e.currentTarget).get("format")||"original";const result=await exportProject(p,format);note("Downloaded "+result.fileName+" and saved it to local export history.");}catch(err){note(err.message||"Export failed.");}finally{btn.disabled=false;btn.textContent="Export and download";}});
   }
