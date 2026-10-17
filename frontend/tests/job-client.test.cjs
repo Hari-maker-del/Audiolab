@@ -154,7 +154,7 @@ test("downloadAudio accepts a RIFF/WAVE result and rejects non-WAV content", asy
     baseUrl: "http://localhost:8000",
     fetchImpl: async () => ({
       ok: true, status: 200,
-      async blob() { return new Blob(["<html>not audio</html>"], { type: "text/html" }); }
+      async blob() { return new Blob(["<html>" + "x".repeat(60) + "</html>"], { type: "text/html" }); }
     })
   });
   await assert.rejects(invalid.downloadAudio("bad-audio"), /not a valid RIFF\/WAVE file/);
