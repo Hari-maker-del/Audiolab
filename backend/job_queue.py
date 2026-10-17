@@ -26,7 +26,6 @@ def public_job_view(job: dict) -> dict:
         result = {
             "download_url": f"/jobs/{job['job_id']}/download",
             "filename": "audiolab-dubbing-project.zip",
-            "media_type": "application/zip",
         }
     elif job.get("status") == "succeeded" and job.get("kind") == "voice-generate":
         stored = result if isinstance(result, dict) else {}
