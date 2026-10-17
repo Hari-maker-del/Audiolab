@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -111,6 +112,10 @@ def _health_check(base_url: str, timeout: float) -> dict:
 def run_preflight(*, api_url: str = "http://127.0.0.1:8000", project_root: str | Path = ".",
                   minimum_free_gb: float = MIN_FREE_DISK_GB, timeout: float = 3.0) -> dict:
     base_url = validate_loopback_url(api_url)
+    if not math.isfinite(float(minimum_free_gb)) or minimum_free_gb < 0:
+        raise ValueError("Minimum free disk threshold must be a finite non-negative number.")
+    if not math.isfinite(float(timeout)) or timeout <= 0:
+        raise ValueError("API timeout must be a finite positive number.")
     root = Path(project_root).expanduser().resolve()
     checks: list[dict] = []
 
