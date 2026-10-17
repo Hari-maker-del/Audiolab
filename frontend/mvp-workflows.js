@@ -141,10 +141,12 @@
       const button=document.getElementById("mvp-timeline-play");button.disabled=true;
       try{
         const ctx=new Ctx();timelineContext=ctx;await ctx.resume();
+        const decodedTracks=[];
+        for(const track of active)decodedTracks.push({track,buffer:await ctx.decodeAudioData(await track.audioBlob.arrayBuffer())});
         const startAt=ctx.currentTime+0.12;let maxEnd=0;
         const masterVolume=mixer?Number(document.getElementById("mvp-volume")?.value??1):1;
-        for(const track of active){
-          const decoded=await ctx.decodeAudioData(await track.audioBlob.arrayBuffer());
+        for(const item of decodedTracks){
+          const track=item.track,decoded=item.buffer;
           const source=ctx.createBufferSource();source.buffer=decoded;
           const gain=ctx.createGain();gain.gain.value=track.muted?0:Math.max(0,Math.min(1.5,Number(track.gain??1)))*Math.max(0,Math.min(1,masterVolume));
           source.connect(gain);gain.connect(ctx.destination);
@@ -211,6 +213,7 @@
   }
   async function renderTimelineMix(project) {
     const tracks=Array.isArray(project.tracks)?project.tracks.filter(t=>t&&t.audioBlob):[];
+    if(!tracks.length&&project.audioBlob)tracks.push({id:"source-"+project.id,name:project.audioName||"Source audio",audioBlob:project.audioBlob,offset:0,gain:1,muted:false});
     if(!tracks.length)throw new Error("Add at least one audio track before exporting a mixdown.");
     const Ctx=window.AudioContext||window.webkitAudioContext;
     const Offline=window.OfflineAudioContext||window.webkitOfflineAudioContext;
