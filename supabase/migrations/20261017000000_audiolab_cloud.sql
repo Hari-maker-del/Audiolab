@@ -10,7 +10,8 @@ create table if not exists public.audiolab_projects (
   notes text not null default '',
   timeline jsonb not null default '{"tracks":[],"volume":1}'::jsonb,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, owner_id)
 );
 create index if not exists audiolab_projects_owner_updated_idx
   on public.audiolab_projects(owner_id, updated_at desc);
@@ -32,8 +33,9 @@ create table if not exists public.audiolab_audio_assets (
     on delete cascade
 );
 -- Composite unique key enables the ownership-enforcing composite foreign key.
-create unique index if not exists audiolab_projects_id_owner_unique
-  on public.audiolab_projects(id, owner_id);
+grant select, insert, update, delete on public.audiolab_projects to authenticated;
+grant select, insert, delete on public.audiolab_audio_assets to authenticated;
+grant select, insert on public.audiolab_processing_jobs to authenticated;
 create index if not exists audiolab_assets_owner_created_idx
   on public.audiolab_audio_assets(owner_id, created_at desc);
 create index if not exists audiolab_assets_project_created_idx
