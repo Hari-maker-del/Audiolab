@@ -4,6 +4,22 @@ Last updated: 2026-10-16
 
 This file distinguishes source-code integration from successful runtime verification. A feature is not marked runtime-verified just because its UI or endpoint exists.
 
+## Phase 15 real inference validation (2026-10-17)
+
+### Implemented in source
+- Added dependency-free input audio preflight checks for supported extensions, non-empty files, file-size limits, and WAV structural decoding before a real transcription upload.
+- Strengthened transcription acceptance criteria: returned segments must have finite, ordered, non-negative timestamps and non-empty text.
+- Strengthened dubbing export validation: ZIP integrity, readable WAV parameters and frames, timestamped SRT cues, parseable JSON, and valid timed segment metadata.
+- Smoke-test output now reports input and artifact validation summaries, while preserving backend failure details and elapsed job-status messages.
+- Added regression tests for malformed input audio, invalid segment timestamps, corrupt WAV output, missing subtitle cues, and invalid segment JSON.
+- CI compiles the new validation module. Tests use synthetic fixtures and do not download or run AI model weights.
+
+### Runtime verification still required
+- On Windows, start the local backend and run the Phase 13 transcription smoke test with a real short speech recording.
+- If the job fails, review the printed backend error for missing optional dependencies, model download/authentication failures, unsupported audio, or no-speech detection.
+- Run a render only with a target voice recording you have permission to use; listen to the downloaded WAV and review the subtitles.
+- A passing test proves output structure and job workflow, not transcription accuracy or voice quality. Keep the unauthenticated backend on loopback.
+
 ## Phase 9 secure product and deployment foundation (2026-10-16)
 
 ### Implemented in source
