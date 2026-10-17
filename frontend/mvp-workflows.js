@@ -89,8 +89,8 @@
     return '<article class="project-card"><span class="project-icon">♫</span><b>'+esc(p.name)+'</b><small>'+esc(p.kind||"Audio editing")+' · '+esc(p.created||"")+'</small>'+(p.audioBlob?'<span class="tag">'+esc(p.audioName||"Audio attached")+' · '+prettyBytes(p.audioBlob.size)+'</span>':'<span class="tag">No audio attached</span>')+'<div class="quick-links"><a href="/projects/'+encodeURIComponent(p.id)+'/editor">Open editor</a><a href="/projects/'+encodeURIComponent(p.id)+'/mixer">Mixer</a></div></article>';
   }
   async function renderProjects() {
-    const all=await syncLegacyIndex();
     const old=(()=>{try{return JSON.parse(localStorage.getItem("audiolab-projects")||"[]")}catch{return[]}})();
+    const all=await syncLegacyIndex();
     const known=new Set(all.map(p=>p.id));
     const list=all.concat(old.filter(p=>!known.has(p.id)).map(p=>({...p,legacy:true})));
     const stats='<div class="stats"><div class="stat"><span>Projects</span><b>'+list.length+'</b><small>Saved in this browser</small></div><div class="stat"><span>Audio files</span><b>'+all.filter(p=>p.audioBlob).length+'</b><small>Stored locally in IndexedDB</small></div><div class="stat"><span>Cloud sync</span><b>Off</b><small>No account required</small></div></div>';
