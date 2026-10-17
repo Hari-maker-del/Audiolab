@@ -8,6 +8,7 @@ import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import zipfile
+import wave
 
 import pytest
 
@@ -17,10 +18,16 @@ from audiolab_e2e_smoke import SmokeTestError, run_smoke, validate_base_url, val
 
 def _test_archive() -> bytes:
     output = io.BytesIO()
+    wav_bytes = io.BytesIO()
+    with wave.open(wav_bytes, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x00" * 2400)
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("dubbed_voice.wav", b"fake-wave-payload")
+        archive.writestr("dubbed_voice.wav", wav_bytes.getvalue())
         archive.writestr("subtitles.srt", "1\n00:00:00,000 --> 00:00:01,000\nHello\n")
-        archive.writestr("segments.json", '{"segments":[]}')
+        archive.writestr("segments.json", '{"segments":[{"start":0,"end":1,"translated_text":"Hello"}]}')
     return output.getvalue()
 
 
