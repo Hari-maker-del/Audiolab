@@ -15,8 +15,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Compile backend Python files
-        run: python -m compileall -q backend
+      - name: Compile backend and local diagnostic scripts
+        run: python -m compileall -q backend scripts/audiolab_e2e_smoke.py scripts/audiolab_preflight.py
       - name: Install lightweight audio test dependencies
         run: python -m pip install pytest numpy scipy soundfile
       - name: Test procedural audio generation
