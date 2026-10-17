@@ -134,3 +134,28 @@ test("download accepts a ZIP signature and returns the blob", async () => {
   const blob = await client.downloadRender("zip-job");
   assert.equal(blob.size, 36);
 });
+
+
+test("downloadAudio accepts a RIFF/WAVE result and rejects non-WAV content", async () => {
+  const wavBytes = new Uint8Array(64);
+  wavBytes.set([0x52, 0x49, 0x46, 0x46], 0); // RIFF
+  wavBytes.set([0x57, 0x41, 0x56, 0x45], 8); // WAVE
+  const client = createClient({
+    baseUrl: "http://localhost:8000",
+    fetchImpl: async url => {
+      assert.match(url, /\/jobs\/voice-job\/download$/);
+      return { ok: true, status: 200, async blob() { return new Blob([wavBytes], { type: "audio/wav" }); } };
+    }
+  });
+  const blob = await client.downloadAudio("voice-job");
+  assert.equal(blob.size, 64);
+
+  const invalid = createClient({
+    baseUrl: "http://localhost:8000",
+    fetchImpl: async () => ({
+      ok: true, status: 200,
+      async blob() { return new Blob(["<html>" + "x".repeat(60) + "</html>"], { type: "text/html" }); }
+    })
+  });
+  await assert.rejects(invalid.downloadAudio("bad-audio"), /not a valid RIFF\/WAVE file/);
+});

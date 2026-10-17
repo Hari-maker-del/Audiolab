@@ -85,12 +85,50 @@ async function localTranscribe(file, language) {
 }
 
 async function localGenerate({ text, language, refText, file }) {
-  const form = new FormData();
-  form.append("text", text); form.append("language", language); form.append("ref_text", refText);
-  form.append("file", file, file.name || "reference.wav");
-  const response = await fetch(`${LOCAL_API}/generate`, { method: "POST", body: form });
-  if (!response.ok) throw new Error(`Local backend returned ${response.status}`);
-  return response.blob();
+  emitStatus({ stage: "connecting" });
+  try {
+    const form = new FormData();
+    form.append("text", text);
+    form.append("language", language);
+    form.append("ref_text", refText);
+    form.append("file", file, file.name || "reference.wav");
+
+    const response = await fetch(`${LOCAL_API}/jobs/generate`, { method: "POST", body: form });
+    if (!response.ok) {
+      let detail = `Local backend returned ${response.status}`;
+      try { detail = (await response.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+
+    let submitted;
+    try { submitted = await response.json(); }
+    catch (_) { throw new Error("The local backend returned an invalid generation-job response."); }
+    if (response.status !== 202 || !submitted?.job_id || submitted.status !== "queued") {
+      throw new Error("The local backend did not accept the generation job.");
+    }
+    if (!window.AudiolabJobs?.createClient) {
+      throw new Error("Audiolab's job client did not load. Refresh the Studio and try again.");
+    }
+
+    const jobs = window.AudiolabJobs.createClient({
+      baseUrl: LOCAL_API,
+      pollIntervalMs: 1200,
+      maxDurationMs: 30 * 60 * 1000,
+    });
+    await jobs.pollJob(submitted.job_id, (job) => {
+      emitStatus({
+        stage: "generation-progress",
+        status: job.status,
+        message: job.message || "",
+      });
+    });
+    const audio = await jobs.downloadAudio(submitted.job_id);
+    emitStatus({ stage: "generation-complete" });
+    return audio;
+  } catch (error) {
+    emitStatus({ stage: "error", error: error?.message || "Voice generation failed." });
+    throw error;
+  }
 }
 
 window.audiolabHFReady = Promise.resolve();
@@ -136,6 +174,19 @@ window.addEventListener("audiolab-hf-status", (event) => {
   } else if (stage === "ready") {
     if (model) model.textContent = "IndicF5 Not Yet Verified";
     if (device) device.textContent = "Hosted Space API reachable";
+  } else if (stage === "generation-progress") {
+    const status = event.detail?.status || "running";
+    if (model) model.textContent = "IndicF5 " + status;
+    if (device) device.textContent = "Local inference job · " + status;
+    const loading = document.querySelector("#resultBox .loading");
+    if (loading) loading.textContent = status === "queued"
+      ? "Waiting for the local AI worker…"
+      : status === "running"
+        ? "Generating real audio with IndicF5…"
+        : "Checking generation status…";
+  } else if (stage === "generation-complete") {
+    if (model) model.textContent = "IndicF5 Loaded";
+    if (device) device.textContent = "Local inference complete";
   } else if (stage === "error") {
     if (model) model.textContent = "IndicF5 Connection Failed";
     if (device) device.textContent = "Check backend / retry Generate";
