@@ -19,6 +19,13 @@ import zipfile
 from io import BytesIO
 from typing import Callable
 
+from audiolab_inference_validation import (
+    AudioValidationError,
+    validate_audio_input,
+    validate_render_archive,
+    validate_segments,
+)
+
 
 REQUIRED_RENDER_FILES = {"dubbed_voice.wav", "subtitles.srt", "segments.json"}
 LOOPBACK_NAMES = {"localhost", "127.0.0.1", "::1"}
@@ -163,8 +170,11 @@ def run_smoke(*, base_url: str = "http://127.0.0.1:8000", timeout: float = 1800,
     summary: dict = {"base_url": base_url, "health": "passed", "history": "passed", "jobs": [], "render_archive": None}
     if transcribe_audio:
         audio = Path(transcribe_audio).expanduser().resolve()
-        if not audio.is_file():
-            raise SmokeTestError(f"Transcription audio file not found: {audio}")
+        try:
+            input_report = validate_audio_input(audio)
+        except AudioValidationError as exc:
+            raise SmokeTestError(str(exc)) from exc
+        on_message("PASS: input audio preflight: " + json.dumps(input_report, ensure_ascii=False))
         body, content_type = _multipart({"source_language": ""}, "source_file", audio)
         _, submitted = _json_request(base_url, "/jobs/dub-transcribe", method="POST", body=body,
                                      content_type=content_type, api_key=api_key, timeout=30)
@@ -173,11 +183,16 @@ def run_smoke(*, base_url: str = "http://127.0.0.1:8000", timeout: float = 1800,
             raise SmokeTestError("Transcription endpoint did not return a queued job ID.")
         job = _poll_job(base_url, job_id, timeout=timeout, api_key=api_key, on_message=on_message)
         result = job.get("result")
-        if not isinstance(result, dict) or not isinstance(result.get("segments"), list) or not result["segments"]:
-            raise SmokeTestError("Transcription succeeded but returned no timestamped segments.")
+        if not isinstance(result, dict):
+            raise SmokeTestError("Transcription succeeded but returned an invalid result object.")
+        try:
+            segment_report = validate_segments(result.get("segments"))
+        except AudioValidationError as exc:
+            raise SmokeTestError(f"Transcription output validation failed: {exc}") from exc
         _assert_history_contains(base_url, job_id, api_key)
-        on_message(f"PASS: transcription job persisted with {len(result['segments'])} segment(s).")
-        summary["jobs"].append({"job_id": job_id, "kind": "dub-transcribe", "status": job["status"], "segments": len(result["segments"])})
+        on_message("PASS: transcription output validated: " + json.dumps(segment_report))
+        on_message(f"PASS: transcription job {job_id} persisted in local job history.")
+        summary["jobs"].append({"job_id": job_id, "kind": "dub-transcribe", "status": job["status"], **segment_report})
 
     if render_manifest:
         if not confirm_voice_rights:
@@ -214,6 +229,11 @@ def run_smoke(*, base_url: str = "http://127.0.0.1:8000", timeout: float = 1800,
         _, _, archive = _request(base_url, "/jobs/" + urllib.parse.quote(job_id, safe="") + "/download",
                                  api_key=api_key, timeout=60)
         entries = validate_render_zip(archive)
+        try:
+            artifact_report = validate_render_archive(archive)
+        except AudioValidationError as exc:
+            raise SmokeTestError(f"Render artifact validation failed: {exc}") from exc
+        on_message("PASS: rendered audio, subtitles, and segment metadata are valid: " + json.dumps(artifact_report, ensure_ascii=False))
         out_dir = Path(output_dir).expanduser().resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         destination = out_dir / f"audiolab-render-{job_id}.zip"
@@ -223,6 +243,7 @@ def run_smoke(*, base_url: str = "http://127.0.0.1:8000", timeout: float = 1800,
         summary["jobs"].append({"job_id": job_id, "kind": "dub-render", "status": job["status"]})
         summary["render_archive"] = str(destination)
         summary["archive_entries"] = entries
+        summary["render_validation"] = artifact_report
 
     if not transcribe_audio and not render_manifest:
         on_message("NOTE: only read-only health/history checks ran. Supply --transcribe-audio and/or --render-manifest to exercise actual local model inference.")
