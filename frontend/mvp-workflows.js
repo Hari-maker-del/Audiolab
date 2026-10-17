@@ -115,16 +115,84 @@
   async function renderEditor(mixer=false) {
     const id=projectId();const p=await getOne("projects",id);
     if(!p){shell(mixer?"Mixer":"Project editor","Studio","Open and edit a project stored on this device.",'<div class="notice"><b>Project not found in this browser.</b><p>This project may have been created on another device or in older browser storage.</p><a class="button primary" href="/projects">Back to projects</a></div>');return;}
-    const audio=p.audioBlob?'<audio id="mvp-audio-player" controls preload="metadata" style="width:100%" src="'+URL.createObjectURL(p.audioBlob)+'"></audio>':'<div class="empty compact"><h3>No audio attached</h3><p>Upload an audio file to play it here.</p><label class="button" for="mvp-replace-audio">＋ Add audio</label><input id="mvp-replace-audio" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac,.webm,.aiff" hidden></div>';
-    const content='<div class="editor-placeholder"><div class="editor-toolbar"><a class="button" href="/projects">← Projects</a><span class="tag">'+esc(p.kind||"Audio editing")+'</span><a class="button primary" href="/export?project='+encodeURIComponent(id)+'">Export audio</a></div><form id="mvp-project-form" class="form-card" style="margin-top:18px"><label for="mvp-editor-name">Project name</label><input id="mvp-editor-name" maxlength="80" required value="'+esc(p.name)+'"><label>Source audio</label>'+audio+(p.audioBlob?'<p class="hint">'+esc(p.audioName)+' · '+prettyBytes(p.audioBlob.size)+(p.duration?' · '+Math.round(p.duration)+' seconds':'')+'</p><label class="button" for="mvp-replace-audio">Replace audio</label><input id="mvp-replace-audio" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac,.webm,.aiff" hidden>':'')+'<label for="mvp-notes">Project notes</label><textarea id="mvp-notes" rows="4" placeholder="Add edit notes, script or export reminders…">'+esc(p.notes||"")+'</textarea>'+(mixer?'<label for="mvp-volume">Playback volume</label><input id="mvp-volume" type="range" min="0" max="1" step="0.05" value="'+Number(p.editor?.volume??1)+'">':'')+'<div class="quick-links"><button class="button primary" type="submit">Save project</button><button class="button" id="mvp-delete-project" type="button">Delete project</button></div>'+messageBox+'</form></div>';
-    shell(mixer?"Mixer":"Project editor","Studio",mixer?"Preview your audio and adjust local playback level.":"Play source audio, save notes and prepare an export.",content);
+    if(!Array.isArray(p.tracks))p.tracks=p.audioBlob?[{id:"source-"+p.id,name:p.audioName||"Source audio",audioBlob:p.audioBlob,audioType:p.audioType||"audio/wav",duration:p.duration||0,offset:0,gain:1,muted:false,origin:"source"}]:[];
+    const tracks=p.tracks.filter(t=>t&&t.audioBlob);
+    const total=Math.max(0,...tracks.map(t=>Math.max(0,Number(t.offset)||0)+Math.max(0,Number(t.duration)||0)));
+    const scale=Math.max(10,total);
+    const ticks=Array.from({length:Math.min(11,Math.max(3,Math.ceil(scale/5)+1))},(_,i)=>{const time=scale*i/(Math.min(11,Math.max(3,Math.ceil(scale/5)+1)-1);return '<span style="left:'+((time/scale)*100)+'%">'+time.toFixed(0)+'s</span>';}).join("");
+    const timeline=tracks.length?tracks.map((t,i)=>{
+      const offset=Math.max(0,Number(t.offset)||0),duration=Math.max(0,Number(t.duration)||0);
+      return '<div class="mvp-track-row"><div class="mvp-track-meta"><b>'+esc(t.name||("Track "+(i+1)))+'</b><small>'+duration.toFixed(2)+'s · '+prettyBytes(t.audioBlob.size||0)+'</small><div class="mvp-track-controls"><label>Start <input type="number" min="0" max="36000" step="0.1" value="'+offset+'" data-track-offset="'+esc(t.id)+'"></label><label>Level <input type="range" min="0" max="1.5" step="0.05" value="'+Math.max(0,Math.min(1.5,Number(t.gain??1)))+'" data-track-gain="'+esc(t.id)+'"></label><label class="mvp-mute"><input type="checkbox" '+(t.muted?'checked':'')+' data-track-mute="'+esc(t.id)+'"> Mute</label><button class="button" type="button" data-track-remove="'+esc(t.id)+'">Remove</button></div></div><div class="mvp-track-lane"><div class="mvp-track-clip" title="'+esc(t.name)+'" style="left:'+Math.min(99,(offset/scale)*100)+'%;width:'+Math.min(100-(offset/scale)*100,Math.max(1,(duration/scale)*100))+'%"><span>♫ '+esc(t.name)+'</span></div></div></div>';
+    }).join(""):'<div class="empty compact"><h3>No tracks yet</h3><p>Add an audio file or save generated speech from Studio into this project.</p></div>';
+    const content='<div class="editor-placeholder"><div class="editor-toolbar"><a class="button" href="/projects">← Projects</a><span class="tag">'+esc(p.kind||"Audio editing")+'</span><a class="button primary" href="/export?project='+encodeURIComponent(id)+'">Export / Mixdown</a></div><section class="mvp-timeline-card"><div class="mvp-timeline-heading"><div><h2>Timeline</h2><p class="hint">Tracks are stored in this browser. Set each start time, level and mute state, then save.</p></div><div class="quick-links"><button class="button primary" id="mvp-timeline-play" type="button">▶ Play mix</button><button class="button" id="mvp-timeline-stop" type="button">■ Stop</button><label class="button" for="mvp-add-track">＋ Add track</label><input id="mvp-add-track" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac,.webm,.aiff" multiple hidden></div></div><div class="mvp-timeline-ruler">'+ticks+'</div><div class="mvp-timeline-tracks">'+timeline+'</div><p id="mvp-timeline-status" class="hint" role="status" aria-live="polite">Timeline length: '+total.toFixed(2)+' seconds · '+tracks.length+' track(s)</p></section><form id="mvp-project-form" class="form-card" style="margin-top:18px"><label for="mvp-editor-name">Project name</label><input id="mvp-editor-name" maxlength="80" required value="'+esc(p.name)+'"><label for="mvp-notes">Project notes / script</label><textarea id="mvp-notes" rows="4" placeholder="Add edit notes, script or export reminders…">'+esc(p.notes||"")+'</textarea>'+(mixer?'<label for="mvp-volume">Master preview volume</label><input id="mvp-volume" type="range" min="0" max="1" step="0.05" value="'+Number(p.editor?.volume??1)+'">':'')+'<div class="quick-links"><button class="button primary" type="submit">Save project and timeline</button><button class="button" id="mvp-delete-project" type="button">Delete project</button></div>'+messageBox+'</form></div>';
+    shell(mixer?"Mixer":"Project editor","Studio",mixer?"Preview your audio timeline and adjust local playback level.":"Arrange generated voice and imported audio as persistent local tracks.",content);
+    const status=document.getElementById("mvp-timeline-status");
     const form=document.getElementById("mvp-project-form");
-    form.addEventListener("submit",async e=>{e.preventDefault();p.name=document.getElementById("mvp-editor-name").value.trim();p.notes=document.getElementById("mvp-notes").value;p.updatedAt=stamp();if(mixer){p.editor=p.editor||{};p.editor.volume=Number(document.getElementById("mvp-volume").value);}await put("projects",p);await syncLegacyIndex();note("Project saved in this browser.");});
-    const replacement=document.getElementById("mvp-replace-audio");
-    if(replacement)replacement.addEventListener("change",async()=>{const file=replacement.files[0];if(!file)return;if(file.size>MAX_FILE_BYTES){note("Choose a file smaller than 100 MB.");return;}if(!file.type.startsWith("audio/")&&!AUDIO_EXT.test(file.name)){note("Choose a supported audio file.");return;}p.audioBlob=file;p.audioName=file.name;p.audioType=file.type;p.duration=await readFileDuration(file);p.updatedAt=stamp();await put("projects",p);await syncLegacyIndex();location.reload();});
-    const player=document.getElementById("mvp-audio-player");if(player&&mixer)player.volume=Number(p.editor?.volume??1);
-    const volume=document.getElementById("mvp-volume");if(volume&&player)volume.addEventListener("input",()=>{player.volume=Number(volume.value);});
-    document.getElementById("mvp-delete-project").addEventListener("click",async()=>{if(!confirm("Delete this project and its locally stored source audio? This cannot be undone."))return;await del("projects",p.id);await syncLegacyIndex();location.href="/projects";});
+    let timelineContext=null,timelineNodes=[],stopTimer=null;
+    const stopMix=async()=>{if(stopTimer)clearTimeout(stopTimer);stopTimer=null;timelineNodes.forEach(node=>{try{node.stop();}catch(_){}});timelineNodes=[];if(timelineContext){const ctx=timelineContext;timelineContext=null;await ctx.close().catch(()=>{});}if(status)status.textContent="Playback stopped.";};
+    document.getElementById("mvp-timeline-stop").addEventListener("click",stopMix);
+    document.getElementById("mvp-timeline-play").addEventListener("click",async()=>{
+      await stopMix();
+      const active=p.tracks.filter(t=>t&&t.audioBlob);
+      if(!active.length){if(status)status.textContent="Add at least one audio track first.";return;}
+      const Ctx=window.AudioContext||window.webkitAudioContext;
+      if(!Ctx){if(status)status.textContent="Audio playback is not supported by this browser.";return;}
+      const button=document.getElementById("mvp-timeline-play");button.disabled=true;
+      try{
+        const ctx=new Ctx();timelineContext=ctx;await ctx.resume();
+        const startAt=ctx.currentTime+0.12;let maxEnd=0;
+        for(const track of active){
+          const decoded=await ctx.decodeAudioData(await track.audioBlob.arrayBuffer());
+          const source=ctx.createBufferSource();source.buffer=decoded;
+          const gain=ctx.createGain();gain.gain.value=track.muted?0:Math.max(0,Math.min(1.5,Number(track.gain??1)));
+          source.connect(gain);gain.connect(ctx.destination);
+          const offset=Math.max(0,Number(track.offset)||0);source.start(startAt+offset);
+          timelineNodes.push(source);maxEnd=Math.max(maxEnd,offset+decoded.duration);
+        }
+        if(mixer){const master=Number(document.getElementById("mvp-volume")?.value??1);/* applied to live preview below */if(master<1){const gain=ctx.createGain();gain.gain.value=master;}}
+        if(status)status.textContent="Playing "+active.length+" track(s)…";
+        stopTimer=setTimeout(()=>{stopMix();},Math.max(0,maxEnd*1000+250));
+      }catch(error){await stopMix();if(status)status.textContent="Could not play the timeline: "+(error.message||"audio decode failed");}
+      finally{button.disabled=false;}
+    });
+    const addInput=document.getElementById("mvp-add-track");
+    addInput.addEventListener("change",async()=>{
+      const files=[...(addInput.files||[])];if(!files.length)return;
+      try{
+        for(const file of files){
+          if(file.size>MAX_FILE_BYTES)throw new Error(file.name+" exceeds the 100 MB file limit.");
+          if(!file.type.startsWith("audio/")&&!AUDIO_EXT.test(file.name))throw new Error("Choose a supported audio file.");
+          if(window.AudiolabProjectAssets?.addTrack)await window.AudiolabProjectAssets.addTrack(p.id,file,{origin:"imported"});
+          else {const duration=await readFileDuration(file);p.tracks.push({id:crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:file.name,audioBlob:file,audioType:file.type,duration,offset:0,gain:1,muted:false,origin:"imported"});await put("projects",p);}
+        }
+        location.reload();
+      }catch(error){if(status)status.textContent=error.message||"Could not add the audio track.";}
+    });
+    document.querySelectorAll("[data-track-offset]").forEach(input=>input.addEventListener("change",async()=>{
+      const track=p.tracks.find(t=>t.id===input.dataset.trackOffset);if(!track)return;
+      track.offset=Math.max(0,Number(input.value)||0);p.updatedAt=stamp();await put("projects",p);if(status)status.textContent="Track start saved.";
+    }));
+    document.querySelectorAll("[data-track-gain]").forEach(input=>input.addEventListener("input",()=>{
+      const track=p.tracks.find(t=>t.id===input.dataset.trackGain);if(track)track.gain=Math.max(0,Math.min(1.5,Number(input.value)||0));
+    }));
+    document.querySelectorAll("[data-track-gain]").forEach(input=>input.addEventListener("change",async()=>{p.updatedAt=stamp();await put("projects",p);if(status)status.textContent="Track level saved."; }));
+    document.querySelectorAll("[data-track-mute]").forEach(input=>input.addEventListener("change",async()=>{
+      const track=p.tracks.find(t=>t.id===input.dataset.trackMute);if(!track)return;track.muted=input.checked;p.updatedAt=stamp();await put("projects",p);if(status)status.textContent=track.muted?"Track muted.":"Track unmuted.";
+    }));
+    document.querySelectorAll("[data-track-remove]").forEach(button=>button.addEventListener("click",async()=>{
+      const track=p.tracks.find(t=>t.id===button.dataset.trackRemove);if(!track)return;
+      if(!confirm("Remove "+(track.name||"this track")+" from the timeline?"))return;
+      await stopMix();p.tracks=p.tracks.filter(t=>t.id!==track.id);p.updatedAt=stamp();await put("projects",p);location.reload();
+    }));
+    form.addEventListener("submit",async e=>{
+      e.preventDefault();p.name=document.getElementById("mvp-editor-name").value.trim();p.notes=document.getElementById("mvp-notes").value;p.updatedAt=stamp();
+      if(mixer){p.editor=p.editor||{};p.editor.volume=Number(document.getElementById("mvp-volume").value);}
+      await put("projects",p);await syncLegacyIndex();note("Project and timeline saved in this browser.");
+    });
+    document.getElementById("mvp-delete-project").addEventListener("click",async()=>{
+      if(!confirm("Delete this project and its locally stored audio tracks? This cannot be undone."))return;
+      await stopMix();await del("projects",p.id);await syncLegacyIndex();location.href="/projects";
+    });
   }
   function makeWav(audioBuffer) {
     const channels=audioBuffer.numberOfChannels,sampleRate=audioBuffer.sampleRate,frames=audioBuffer.length;
