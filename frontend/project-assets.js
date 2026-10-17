@@ -69,6 +69,15 @@
   }
   async function createProjectFromAudio(options) {
     const config = options || {};
+    const cloud = window.AudiolabCloud;
+    if (cloud && cloud.configured) {
+      const user = await cloud.getUser();
+      if (!user) throw new Error("Sign in before saving generated audio to your cloud workspace.");
+      return cloud.createProjectFromAudio({
+        blob: config.blob, filename: config.filename, name: config.name, kind: config.kind,
+        notes: config.notes, durationSeconds: Number.isFinite(config.duration) ? config.duration : null
+      });
+    }
     const blob = config.blob;
     const filename = validateAudio(blob, config.filename);
     const now = stamp();
