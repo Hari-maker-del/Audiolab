@@ -26,6 +26,17 @@ def public_job_view(job: dict) -> dict:
         result = {
             "download_url": f"/jobs/{job['job_id']}/download",
             "filename": "audiolab-dubbing-project.zip",
+            "media_type": "application/zip",
+        }
+    elif job.get("status") == "succeeded" and job.get("kind") == "voice-generate":
+        stored = result if isinstance(result, dict) else {}
+        # Never expose local filesystem paths in the public job response.
+        result = {
+            "download_url": f"/jobs/{job['job_id']}/download",
+            "filename": stored.get("filename", "audiolab-generated-voice.wav"),
+            "media_type": "audio/wav",
+            "sample_rate": stored.get("sample_rate"),
+            "duration_seconds": stored.get("duration_seconds"),
         }
     return {
         "job_id": job["job_id"],
