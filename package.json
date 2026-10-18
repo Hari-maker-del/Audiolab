@@ -2,6 +2,7 @@
   "name": "audiolab",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "description": "Audiolab static web app with optional Neon Postgres cloud foundation",
   "scripts": {
     "build": "node scripts/check-frontend.mjs",
