@@ -7,6 +7,14 @@ backend/reference/*
 backend/outputs/*
 *.pyc
 
+# Local Node/Neon environment and secrets
+node_modules/
+.env
+.env.*
+!.env.example
+.neon
+.vercel/
+
 # Local generated audio
 *.wav
 *.mp3
