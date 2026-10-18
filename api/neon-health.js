@@ -1,6 +1,6 @@
-import { neon } from "@neondatabase/serverless";
+const { neon } = require("@neondatabase/serverless");
 
-export default async function handler(request, response) {
+module.exports = async function handler(request, response) {
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");
     return response.status(405).json({ ok: false, error: "Method not allowed" });
@@ -32,4 +32,4 @@ export default async function handler(request, response) {
       error: "Database connection failed"
     });
   }
-}
+};
