@@ -1,0 +1,41 @@
+name: Neon foundation checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "neon.ts"
+      - "api/**"
+      - "scripts/check-frontend.mjs"
+      - "scripts/neon-smoke.mjs"
+      - "neon/**"
+      - ".github/workflows/neon-foundation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "neon.ts"
+      - "api/**"
+      - "scripts/check-frontend.mjs"
+      - "scripts/neon-smoke.mjs"
+      - "neon/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build (JavaScript syntax checks)
+        run: npm run build
+      - name: Validate Neon config and migration are present
+        run: |
+          test -s neon.ts
+          test -s neon/migrations/001_cloud_workspace.sql
+          node --check api/neon-health.js
+          node --check scripts/neon-smoke.mjs
