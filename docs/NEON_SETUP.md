@@ -25,7 +25,7 @@ npm run build
 npm run neon:smoke
 ```
 
-The build command syntax-checks the JavaScript under `frontend/` and `api/`. The smoke test requires `DATABASE_URL` and executes a real `SELECT 1` against Neon.
+The build command syntax-checks the application's established JavaScript entry points plus the new Neon API and smoke-test scripts. Two older unused scripts contain legacy syntax issues and are intentionally not part of this build check. The smoke test requires `DATABASE_URL` and executes a real `SELECT 1` against Neon.
 
 For Vercel, set `DATABASE_URL` in Project Settings → Environment Variables. Keep it server-side only. The `/api/neon-health` endpoint reports database reachability without returning credentials.
 
